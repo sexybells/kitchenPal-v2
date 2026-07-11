@@ -32,7 +32,16 @@ export type IconName =
   | "alert"
   | "google"
   | "apple"
-  | "fingerprint";
+  | "fingerprint"
+  | "heart"
+  | "heart-filled"
+  | "star"
+  | "star-filled"
+  | "clock"
+  | "users"
+  | "link"
+  | "sparkles"
+  | "camera";
 
 // Each entry is the inner markup of a 0 0 24 24 viewBox, stroked (fill: none)
 // unless a glyph needs a solid fill (brand marks).
@@ -119,6 +128,48 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   fingerprint: <Path d="M8 11a4 4 0 0 1 8 0v3M6 13v1a10 10 0 0 0 1 4M12 11v4a6 6 0 0 0 1 3M9.5 20a8 8 0 0 1-1-4v-2M4 9a9 9 0 0 1 16 0" />,
+  heart: (
+    <Path d="M12 20s-7-4.35-7-9.5A4 4 0 0 1 12 8a4 4 0 0 1 7-2.5c0 5.15-7 9.5-7 9.5Z" />
+  ),
+  "heart-filled": (
+    <Path
+      d="M12 20s-7-4.35-7-9.5A4 4 0 0 1 12 8a4 4 0 0 1 7-2.5c0 5.15-7 9.5-7 9.5Z"
+      fill="currentColor"
+    />
+  ),
+  star: (
+    <Path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9 6.75 19.5l1-5.85L3.5 9.65l5.9-.85Z" />
+  ),
+  "star-filled": (
+    <Path
+      d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9 6.75 19.5l1-5.85L3.5 9.65l5.9-.85Z"
+      fill="currentColor"
+    />
+  ),
+  clock: (
+    <>
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M12 7v5l3 2" />
+    </>
+  ),
+  users: (
+    <>
+      <Circle cx={9} cy={8} r={3.5} />
+      <Path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M16 5.2a3.5 3.5 0 0 1 0 6.6M21 20c0-2.3-1.3-4-3.4-4.8" />
+    </>
+  ),
+  link: (
+    <Path d="M10 14a4 4 0 0 0 5.66 0l3-3A4 4 0 1 0 13 5.34l-1.5 1.5M14 10a4 4 0 0 0-5.66 0l-3 3A4 4 0 1 0 11 18.66l1.5-1.5" />
+  ),
+  sparkles: (
+    <Path d="M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8ZM19 14l.9 2.3 2.3.9-2.3.9L19 20.4l-.9-2.3-2.3-.9 2.3-.9Z" />
+  ),
+  camera: (
+    <>
+      <Path d="M4 8h3l1.5-2h7L17 8h3v11H4zM4 8V19" />
+      <Circle cx={12} cy={13} r={3.5} />
+    </>
+  ),
   // Brand marks are filled glyphs, drawn from the icon color.
   google: (
     <Path
