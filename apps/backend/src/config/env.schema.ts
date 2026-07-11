@@ -60,6 +60,23 @@ export const envSchema = z
     GEMINI_VISION_MODEL: z.string().min(1).default("gemini-1.5-flash"),
     // Hard cap on vision completion tokens, bounding per-scan AI cost.
     AI_VISION_MAX_TOKENS: z.coerce.number().int().positive().max(4096).default(800),
+    // Text-LLM models for recipe suggestions and meal auto-fill. Reuse the same
+    // OPENAI/GEMINI keys as vision; when neither key is set, suggestions and
+    // auto-fill degrade to deterministic heuristics (never fabricated recipes).
+    OPENAI_TEXT_MODEL: z.string().min(1).default("gpt-4o-mini"),
+    GEMINI_TEXT_MODEL: z.string().min(1).default("gemini-1.5-flash"),
+    // Hard cap on suggestion/auto-fill completion tokens, bounding per-call cost.
+    AI_SUGGESTION_MAX_TOKENS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(4096)
+      .default(600),
+    // Google Custom Search for external recipe web-search. Both optional: without
+    // them, external search degrades to an empty, flagged result (never crashes,
+    // never fabricates links).
+    GOOGLE_SEARCH_API_KEY: z.string().min(1).optional(),
+    GOOGLE_SEARCH_CX: z.string().min(1).optional(),
   })
   // Production guardrails: the in-memory / localhost fallbacks used for local
   // development are unsafe in production (per-instance rate limiting that is

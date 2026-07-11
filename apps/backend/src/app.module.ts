@@ -15,6 +15,7 @@ import { JwtAuthGuard } from "./modules/auth/guards/jwt-auth.guard";
 import { HealthModule } from "./modules/health/health.module";
 import { LogsModule } from "./modules/logs/logs.module";
 import { PantryModule } from "./modules/pantry/pantry.module";
+import { RecipesModule } from "./modules/recipes/recipes.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { UsersModule } from "./modules/users/users.module";
 
@@ -38,6 +39,7 @@ import { UsersModule } from "./modules/users/users.module";
     UsersModule,
     UploadsModule,
     PantryModule,
+    RecipesModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

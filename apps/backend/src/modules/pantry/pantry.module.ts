@@ -74,5 +74,8 @@ const visionProvidersProvider = {
     AiVisionService,
     visionProvidersProvider,
   ],
+  // Pantry stock is needed by the recipes module (pantry-match, pantry-based
+  // suggestions, auto-fill), so expose the item repository to importers.
+  exports: [PantryItemRepository],
 })
 export class PantryModule {}
