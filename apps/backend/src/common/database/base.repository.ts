@@ -1,5 +1,6 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import type {
+  ClientSession,
   FilterQuery,
   HydratedDocument,
   Model,
@@ -77,12 +78,13 @@ abstract class AbstractRepository<T extends BaseDocumentFields> {
     expectedVersion: number,
     update: UpdateQuery<T>,
     actor: Actor,
+    session?: ClientSession,
   ): Promise<HydratedDocument<T>> {
     const result = await this.model
       .findOneAndUpdate(
         { ...base, _id: id, version: expectedVersion } as FilterQuery<T>,
         buildVersionedUpdate(update, actor),
-        { new: true },
+        { new: true, session },
       )
       .exec();
 
@@ -92,6 +94,7 @@ abstract class AbstractRepository<T extends BaseDocumentFields> {
 
     const exists = await this.model
       .exists({ ...base, _id: id } as FilterQuery<T>)
+      .session(session ?? null)
       .exec();
     if (exists) {
       throw new ConflictException({
@@ -207,23 +210,33 @@ export abstract class ScopedRepository<
   find(
     scope: ScopeContext,
     filter: FilterQuery<T> = {},
+    session?: ClientSession,
   ): Promise<HydratedDocument<T>[]> {
-    return this.model.find(this.scopedFilter(scope, filter)).exec();
+    return this.model
+      .find(this.scopedFilter(scope, filter))
+      .session(session ?? null)
+      .exec();
   }
 
   findOne(
     scope: ScopeContext,
     filter: FilterQuery<T> = {},
+    session?: ClientSession,
   ): Promise<HydratedDocument<T> | null> {
-    return this.model.findOne(this.scopedFilter(scope, filter)).exec();
+    return this.model
+      .findOne(this.scopedFilter(scope, filter))
+      .session(session ?? null)
+      .exec();
   }
 
   findById(
     scope: ScopeContext,
     id: string,
+    session?: ClientSession,
   ): Promise<HydratedDocument<T> | null> {
     return this.model
       .findOne(this.scopedFilter(scope, { _id: id } as FilterQuery<T>))
+      .session(session ?? null)
       .exec();
   }
 
@@ -248,6 +261,7 @@ export abstract class ScopedRepository<
     id: string,
     expectedVersion: number,
     update: UpdateQuery<T>,
+    session?: ClientSession,
   ): Promise<HydratedDocument<T>> {
     return this.versionedUpdateWhere(
       this.scopedFilter(scope),
@@ -255,6 +269,7 @@ export abstract class ScopedRepository<
       expectedVersion,
       update,
       scope.userId,
+      session,
     );
   }
 

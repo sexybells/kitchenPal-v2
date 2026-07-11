@@ -25,5 +25,8 @@ const storageAdapterProvider = {
   imports: [AuthModule],
   controllers: [UploadsController],
   providers: [UploadsService, storageAdapterProvider],
+  // Export the storage adapter so other feature modules (e.g. pantry scans)
+  // persist binaries through the same contract without redefining the transport.
+  exports: [STORAGE_ADAPTER],
 })
 export class UploadsModule {}

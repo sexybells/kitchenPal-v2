@@ -51,6 +51,15 @@ export const envSchema = z
     UPLOAD_DIR: z.string().default("./uploads"),
     // Public base URL under which stored uploads are served.
     UPLOAD_PUBLIC_BASE_URL: z.string().default("/uploads"),
+    // Food-vision providers for pantry scans. Both optional: when neither is set
+    // (dev/test) scans degrade to an empty, manual-entry result — never a crash
+    // and never fabricated detections. OpenAI is primary, Gemini the fallback.
+    OPENAI_API_KEY: z.string().min(1).optional(),
+    OPENAI_VISION_MODEL: z.string().min(1).default("gpt-4o-mini"),
+    GEMINI_API_KEY: z.string().min(1).optional(),
+    GEMINI_VISION_MODEL: z.string().min(1).default("gemini-1.5-flash"),
+    // Hard cap on vision completion tokens, bounding per-scan AI cost.
+    AI_VISION_MAX_TOKENS: z.coerce.number().int().positive().max(4096).default(800),
   })
   // Production guardrails: the in-memory / localhost fallbacks used for local
   // development are unsafe in production (per-instance rate limiting that is
