@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "KitchenPal",
+    "slug": "kitchenpal",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "kitchenpal",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "backgroundColor": "#FFF9F3",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kitchenpal.app"
+    },
+    "android": {
+      "package": "com.kitchenpal.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF9F3"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-localization",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow KitchenPal to unlock with Face ID."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFF9F3",
+          "resizeMode": "contain"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
