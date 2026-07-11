@@ -1,10 +1,27 @@
+import { useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Screen, Text, Card, Avatar, Badge, EmptyState, Icon } from "../../src/ui";
+import {
+  Screen,
+  Text,
+  Card,
+  Avatar,
+  Badge,
+  EmptyState,
+  LoadingState,
+  Icon,
+} from "../../src/ui";
 import type { IconName } from "../../src/ui";
 import { theme } from "../../src/theme";
 import { useMe } from "../../src/api/hooks";
+import {
+  usePantryItems,
+  useRefillSuggestions,
+} from "../../src/features/pantry/hooks";
+import { PantryItemRow } from "../../src/features/pantry/PantryItemRow";
+import { StockPill } from "../../src/features/pantry/StockPill";
+import { expiryInfo } from "../../src/features/pantry/stock";
 
 interface MenuAction {
   icon: IconName;
@@ -12,11 +29,13 @@ interface MenuAction {
   label: string;
 }
 
-/** Home dashboard. Header menu routes out to the later-phase feature screens. */
+/** Home dashboard — pantry stats, expiring-soon, and running-low widgets. */
 export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const me = useMe();
+  const items = usePantryItems();
+  const refill = useRefillSuggestions();
 
   const menuActions: MenuAction[] = [
     { icon: "spending", href: "/spending", label: t("menu.spending") },
@@ -26,6 +45,23 @@ export default function HomeScreen() {
   ];
 
   const greetingName = me.data?.displayName ?? "";
+  const allItems = useMemo(() => items.data ?? [], [items.data]);
+
+  // The list arrives sorted by expiry (soonest first, no-expiry last), so the
+  // first few dated items are exactly the "expiring soon" widget.
+  const expiringSoon = useMemo(
+    () => allItems.filter((item) => item.expiryDate).slice(0, 3),
+    [allItems],
+  );
+  const expiringCount = useMemo(
+    () =>
+      allItems.filter((item) => {
+        const info = expiryInfo(item.expiryDate);
+        return info !== null && info.level !== "ok";
+      }).length,
+    [allItems],
+  );
+  const suggestions = refill.data?.suggestions ?? [];
 
   return (
     <Screen>
@@ -81,22 +117,80 @@ export default function HomeScreen() {
         ))}
       </View>
 
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push("/pantry")}
+        style={styles.statsRow}
+        testID="home-stats"
+      >
+        <Stat value={allItems.length} label={t("home.statItems")} />
+        <Stat value={expiringCount} label={t("home.statExpiring")} tone="warning" />
+        <Stat value={suggestions.length} label={t("home.statLow")} tone="danger" />
+      </Pressable>
+
       <Section title={t("home.expiringSoon")}>
-        <Card elevated={false} background="surface-alt">
-          <EmptyState
-            title={t("states.emptyTitle")}
-            body={t("states.emptyBody")}
-            icon="leaf"
-          />
-        </Card>
+        {items.isLoading ? (
+          <Card elevated={false} background="surface-alt">
+            <LoadingState />
+          </Card>
+        ) : expiringSoon.length === 0 ? (
+          <Card elevated={false} background="surface-alt">
+            <EmptyState title={t("states.emptyTitle")} icon="leaf" />
+          </Card>
+        ) : (
+          <Card>
+            {expiringSoon.map((item) => (
+              <PantryItemRow
+                key={item.id}
+                item={item}
+                onPress={() => router.push(`/pantry-item?id=${item.id}`)}
+                testID={`home-expiring-${item.id}`}
+              />
+            ))}
+          </Card>
+        )}
       </Section>
 
-      <Section title={t("home.todaysMeals")}>
-        <Card elevated={false} background="surface-alt">
-          <EmptyState title={t("states.emptyTitle")} icon="meals" />
-        </Card>
+      <Section title={t("home.runningLow")}>
+        {suggestions.length === 0 ? (
+          <Card elevated={false} background="surface-alt">
+            <EmptyState title={t("cook.refillEmpty")} icon="shopping" />
+          </Card>
+        ) : (
+          <Card>
+            {suggestions.slice(0, 4).map((suggestion) => (
+              <View key={suggestion.pantryItemId} style={styles.lowRow}>
+                <Text variant="title" color="text" numberOfLines={1} style={styles.lowName}>
+                  {suggestion.name}
+                </Text>
+                <StockPill state={suggestion.stockState} />
+              </View>
+            ))}
+          </Card>
+        )}
       </Section>
     </Screen>
+  );
+}
+
+function Stat({
+  value,
+  label,
+  tone = "text",
+}: {
+  value: number;
+  label: string;
+  tone?: "text" | "warning" | "danger";
+}) {
+  return (
+    <View style={styles.stat}>
+      <Text variant="display-m" color={tone === "text" ? "text" : tone}>
+        {value}
+      </Text>
+      <Text variant="caption" color="text-muted" center numberOfLines={2}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -143,5 +237,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  statsRow: {
+    flexDirection: "row",
+    gap: theme.spacing[12],
+    marginTop: theme.spacing[24],
+    padding: theme.spacing[16],
+    borderRadius: theme.radius.card,
+    backgroundColor: theme.colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+  },
+  stat: { flex: 1, alignItems: "center", gap: theme.spacing[4] },
   section: { marginTop: theme.spacing[28], gap: theme.spacing[12] },
+  lowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.spacing[12],
+    paddingVertical: theme.spacing[12],
+  },
+  lowName: { flex: 1 },
 });

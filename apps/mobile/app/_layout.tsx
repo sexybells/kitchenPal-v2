@@ -56,6 +56,9 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="scan" options={{ presentation: "modal" }} />
+      <Stack.Screen name="scan-review" options={{ presentation: "card" }} />
+      <Stack.Screen name="pantry-item" options={{ presentation: "modal" }} />
+      <Stack.Screen name="cook" options={{ presentation: "modal" }} />
       <Stack.Screen name="spending" options={{ presentation: "card" }} />
       <Stack.Screen name="household" />
       <Stack.Screen name="notifications" />

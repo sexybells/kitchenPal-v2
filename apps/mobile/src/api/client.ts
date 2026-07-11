@@ -65,10 +65,15 @@ export class ApiClient {
     options: RequestOptions<T>,
     isRetry: boolean,
   ): Promise<Response> {
+    // Multipart uploads (image scans) pass a FormData body: leave the boundary
+    // Content-Type to the platform fetch and send the body verbatim.
+    const isMultipart =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
+
     const headers: Record<string, string> = {
       Accept: "application/json",
     };
-    if (options.body !== undefined) {
+    if (options.body !== undefined && !isMultipart) {
       headers["Content-Type"] = "application/json";
     }
     if (options.auth) {
@@ -81,7 +86,12 @@ export class ApiClient {
       response = await this.fetchImpl(`${this.baseUrl}/${path.replace(/^\//, "")}`, {
         method: options.method ?? (options.body !== undefined ? "POST" : "GET"),
         headers,
-        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+        body:
+          options.body === undefined
+            ? undefined
+            : isMultipart
+              ? (options.body as FormData)
+              : JSON.stringify(options.body),
         signal: options.signal,
       });
     } catch (cause) {
