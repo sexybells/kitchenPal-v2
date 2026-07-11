@@ -6,3 +6,4 @@ export * from "./envelope.js";
 export * from "./pagination.js";
 export * from "./scope.js";
 export * from "./auth.js";
+export * from "./users.js";

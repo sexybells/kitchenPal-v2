@@ -10,13 +10,18 @@ import { AppQueueModule } from "./common/queue/queue.module";
 import { ScopeGuard } from "./common/scope/scope.guard";
 import { AppThrottlerModule } from "./common/throttler/throttler.module";
 import { AppConfigModule } from "./config/config.module";
+import { AuthModule } from "./modules/auth/auth.module";
+import { JwtAuthGuard } from "./modules/auth/guards/jwt-auth.guard";
 import { HealthModule } from "./modules/health/health.module";
 import { LogsModule } from "./modules/logs/logs.module";
+import { UploadsModule } from "./modules/uploads/uploads.module";
+import { UsersModule } from "./modules/users/users.module";
 
 /**
- * Root module wiring the core platform: config, logging, database, cache,
- * rate limiting, queues, and the global envelope/filter/scope providers that
- * every feature module inherits.
+ * Root module wiring the core platform plus the identity/auth feature modules.
+ * Global guard order matters: {@link JwtAuthGuard} runs first to authenticate and
+ * populate `request.user`, then {@link ScopeGuard} resolves the data scope from
+ * that verified principal. Everything is authenticated unless a route is `@Public`.
  */
 @Module({
   imports: [
@@ -28,10 +33,14 @@ import { LogsModule } from "./modules/logs/logs.module";
     AppQueueModule,
     LogsModule,
     HealthModule,
+    AuthModule,
+    UsersModule,
+    UploadsModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: ScopeGuard },
   ],
 })

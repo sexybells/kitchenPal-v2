@@ -4,10 +4,12 @@ import {
   type PaginationQuery,
 } from "@kitchenpal/api-contract";
 import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Public } from "../../common/scope/public.decorator";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { HealthReport, HealthService } from "./health.service";
 
 @ApiTags("health")
+@Public()
 @Controller("health")
 export class HealthController {
   constructor(private readonly health: HealthService) {}

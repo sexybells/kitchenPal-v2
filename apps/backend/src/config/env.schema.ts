@@ -27,9 +27,30 @@ export const envSchema = z
       .enum(["true", "false"])
       .default("true")
       .transform((value) => value === "true"),
-    // Consumed by the authentication phase; optional until then.
+    // Signing secret for short-lived access JWTs. Optional in dev/test (a
+    // logged development fallback is used); required in production.
     JWT_ACCESS_SECRET: z.string().min(1).optional(),
+    // Reserved for future signed-refresh strategies. Refresh tokens are opaque
+    // and stored hashed, so this is not required for rotation to work.
     JWT_REFRESH_SECRET: z.string().min(1).optional(),
+    // Comma-separated allowlist of emails that may be elevated to `admin`.
+    ADMIN_EMAILS: z.string().optional(),
+    // Shared secret required to perform the admin bootstrap elevation.
+    ADMIN_BOOTSTRAP_SECRET: z.string().min(1).optional(),
+    // Comma-separated accepted audiences for Google/Apple identity tokens. When
+    // unset, social sign-in uses a development-only path (rejected in production).
+    GOOGLE_CLIENT_IDS: z.string().optional(),
+    APPLE_CLIENT_IDS: z.string().optional(),
+    // Resend transactional email. When unset, tokens are logged instead of sent
+    // (development only; rejected in production).
+    RESEND_API_KEY: z.string().min(1).optional(),
+    EMAIL_FROM: z.string().default("KitchenPal <noreply@kitchenpal.local>"),
+    // Base URL used to build links inside verification/reset emails.
+    APP_WEB_URL: z.string().default("http://localhost:3000"),
+    // Local filesystem storage for uploaded avatars (S3 adapter in production).
+    UPLOAD_DIR: z.string().default("./uploads"),
+    // Public base URL under which stored uploads are served.
+    UPLOAD_PUBLIC_BASE_URL: z.string().default("/uploads"),
   })
   // Production guardrails: the in-memory / localhost fallbacks used for local
   // development are unsafe in production (per-instance rate limiting that is
@@ -53,6 +74,15 @@ export const envSchema = z
         path: ["MONGODB_URI"],
         message:
           "A non-localhost MONGODB_URI must be set explicitly in production.",
+      });
+    }
+    // Access tokens must be signed with a real secret in production; the dev
+    // fallback secret is never acceptable for a production deployment.
+    if (!env.JWT_ACCESS_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["JWT_ACCESS_SECRET"],
+        message: "JWT_ACCESS_SECRET is required in production.",
       });
     }
   });

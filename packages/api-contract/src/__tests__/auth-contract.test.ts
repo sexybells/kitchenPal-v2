@@ -5,13 +5,25 @@ import { dataScopeSchema } from "../scope.js";
 import { z } from "zod";
 
 describe("api-contract", () => {
-  it("accepts a valid registration and applies default locale", () => {
+  it("accepts a valid registration and leaves locale unset for server resolution", () => {
     const parsed = registerSchema.parse({
       email: "a@b.com",
       password: "supersecret",
       displayName: "Hai",
     });
-    expect(parsed.locale).toBe("vi");
+    // Locale is intentionally optional: the server resolves it from the request
+    // (Accept-Language) instead of the contract hardcoding a default.
+    expect(parsed.locale).toBeUndefined();
+  });
+
+  it("accepts an explicit locale code on registration", () => {
+    const parsed = registerSchema.parse({
+      email: "a@b.com",
+      password: "supersecret",
+      displayName: "Hai",
+      locale: "en",
+    });
+    expect(parsed.locale).toBe("en");
   });
 
   it("rejects short passwords", () => {

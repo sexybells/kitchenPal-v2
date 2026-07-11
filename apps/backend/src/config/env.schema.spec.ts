@@ -41,11 +41,26 @@ describe("envSchema production guardrails", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts production with real Redis and non-localhost Mongo", () => {
+  it("rejects production without a JWT access secret", () => {
     const result = envSchema.safeParse({
       NODE_ENV: "production",
       REDIS_URL: "redis://cache.internal:6379",
       MONGODB_URI: "mongodb://db.internal:27017/kitchenpal",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((i) => i.path[0] === "JWT_ACCESS_SECRET"),
+      ).toBe(true);
+    }
+  });
+
+  it("accepts production with real Redis, non-localhost Mongo, and a JWT secret", () => {
+    const result = envSchema.safeParse({
+      NODE_ENV: "production",
+      REDIS_URL: "redis://cache.internal:6379",
+      MONGODB_URI: "mongodb://db.internal:27017/kitchenpal",
+      JWT_ACCESS_SECRET: "a-strong-production-secret",
     });
     expect(result.success).toBe(true);
   });
