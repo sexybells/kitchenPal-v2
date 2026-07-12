@@ -262,6 +262,28 @@ export const vi = {
     settings: "Cài đặt",
     paywall: "Nâng cấp Pro",
   },
+  paywall: {
+    title: "Nâng cấp Pro",
+    subtitle: "Mở khóa toàn bộ tính năng cho gian bếp của gia đình bạn.",
+    currentFree: "Gói hiện tại: Miễn phí",
+    currentPro: "Bạn đang dùng Pro",
+    recommended: "Đề xuất",
+    currentTag: "Đang dùng",
+    free: "Miễn phí",
+    featuresTitle: "Bao gồm",
+    upgradeCta: "Liên hệ để nâng cấp",
+    cancelCta: "Chuyển về gói Miễn phí",
+    inertNote:
+      "Chưa hỗ trợ thanh toán trong ứng dụng — gói Pro được cấp thủ công.",
+    contactTitle: "Liên hệ để nâng cấp",
+    contactBody:
+      "Việc nâng cấp Pro hiện được xử lý thủ công. Hãy liên hệ đội ngũ KitchenPal để được cấp gói Pro — không có khoản thanh toán nào diễn ra trong ứng dụng.",
+    contactDismiss: "Đã hiểu",
+    canceled: "Đã chuyển về gói Miễn phí.",
+    settingsRow: "Gói đăng ký",
+    planFree: "Miễn phí",
+    planPro: "Pro",
+  },
   shopping: {
     fromRecipe: "Từ công thức",
     progress: "{{bought}}/{{total}} đã mua",
