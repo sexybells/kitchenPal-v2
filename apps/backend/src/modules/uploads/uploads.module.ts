@@ -4,23 +4,20 @@ import { APP_CONFIG, AppConfig } from "../../config/env.schema";
 import { AuthModule } from "../auth/auth.module";
 import { UploadRepository } from "./repositories/upload.repository";
 import { Upload, UploadSchema } from "./schemas/upload.schema";
-import { LocalStorageAdapter } from "./storage/local-storage.adapter";
-import {
-  STORAGE_ADAPTER,
-  type StorageAdapter,
-} from "./storage/storage-adapter";
+import { selectStorageAdapter } from "./storage/select-storage-adapter";
+import { STORAGE_ADAPTER } from "./storage/storage-adapter";
 import { UploadsController } from "./uploads.controller";
 import { UploadsService } from "./uploads.service";
 
 /**
- * Selects the storage transport. Local disk for now; the same {@link StorageAdapter}
- * contract lets an S3 adapter drop in for production without touching callers.
+ * Selects the storage transport per `STORAGE_PROVIDER`. Both adapters implement
+ * the same {@link StorageAdapter} contract, so callers never change when the
+ * transport swaps between local disk (dev) and S3 (production).
  */
 const storageAdapterProvider = {
   provide: STORAGE_ADAPTER,
   inject: [APP_CONFIG],
-  useFactory: (config: AppConfig): StorageAdapter =>
-    new LocalStorageAdapter(config.UPLOAD_DIR, config.UPLOAD_PUBLIC_BASE_URL),
+  useFactory: (config: AppConfig) => selectStorageAdapter(config),
 };
 
 /** Upload module: avatar storage behind the storage adapter. */

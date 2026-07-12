@@ -1,0 +1,93 @@
+name: Deploy
+
+# The `verify` job below re-runs the exact lint/typecheck/test/build commands
+# from `ci.yml` on the commit being deployed, and both `deploy-*` jobs
+# `need: verify` — so nothing ships on a red build regardless of what CI's own
+# run did. `environment: production` on the deploy jobs applies this repo's
+# GitHub Environment protection rules (configure required reviewers there for
+# a manual-approval gate before a deploy job is allowed to run).
+#
+# Triggers:
+#   - push of a `v*` tag  -> deploy (typical release flow)
+#   - manual dispatch     -> deploy on demand
+# A plain push to `main` does NOT auto-deploy; use a tag or manual dispatch so
+# a human decides when production actually changes.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Re-verifies the blocking gate on the exact commit being deployed. Deploy
+  # jobs below `need: verify`, so a red build/lint/typecheck/test cannot ship.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  deploy-backend:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - run: flyctl deploy --config apps/backend/fly.toml --dockerfile apps/backend/Dockerfile --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-admin:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - run: |
+          flyctl deploy --config apps/admin/fly.toml --dockerfile apps/admin/Dockerfile --remote-only \
+            --build-arg VITE_API_URL=${{ secrets.ADMIN_VITE_API_URL }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

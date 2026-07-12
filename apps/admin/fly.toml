@@ -1,0 +1,39 @@
+# Fly.io app config for the KitchenPal admin console (static nginx image).
+# Same platform as the backend for one less provider to operate, but this is a
+# plain static site — any static host works equally well. Drop-in alternative
+# (Vercel/Netlify): build command `pnpm --filter @kitchenpal/admin build` run
+# from the repo root, output directory `apps/admin/dist`, SPA/rewrite rule
+# `/* -> /index.html`, and `VITE_API_URL` set as that platform's build-time env
+# var (Vite bakes it in — see apps/admin/.env.example). See docs/deployment.md.
+#
+# First deploy:
+#   fly launch --no-deploy --copy-config --name kitchenpal-admin
+#   fly deploy --config apps/admin/fly.toml --dockerfile apps/admin/Dockerfile \
+#     --build-arg VITE_API_URL=https://api.kitchenpal.example
+
+app = "kitchenpal-admin"
+primary_region = "sin"
+
+[build]
+  dockerfile = "apps/admin/Dockerfile"
+
+[http_service]
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "5s"
+    interval = "15s"
+    method = "GET"
+    path = "/"
+    port = 80
+    timeout = "5s"
+    type = "http"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256

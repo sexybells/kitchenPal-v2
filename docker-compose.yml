@@ -1,0 +1,87 @@
+# Local full-stack dev environment: backend + a single-node MongoDB replica
+# set + Redis. A replica set is required (not optional) because the
+# expense/consume paths use multi-document transactions, which MongoDB refuses
+# to run against a standalone `mongod`.
+#
+# Usage:
+#   docker compose up --build
+#   docker compose down -v   # also drops the mongo-data volume
+#
+# The backend reads its config from apps/backend/.env if present (copy from
+# apps/backend/.env.example), with the container-network hostnames below
+# overriding MONGODB_URI/REDIS_URL so the backend can reach its dependencies
+# by service name instead of localhost.
+
+services:
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot job: initiates the replica set on first boot. Safe to re-run —
+  # it treats "already initialized" as success. Exits after completing.
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - mongosh
+      - --host
+      - mongo
+      - --quiet
+      - --eval
+      - >
+        try {
+          rs.status();
+        } catch (e) {
+          rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "mongo:27017" }] });
+        }
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - path: ./apps/backend/.env
+        required: false
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo:27017/kitchenpal?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+      STORAGE_PROVIDER: local
+      UPLOAD_DIR: /app/apps/backend/uploads
+      UPLOAD_PUBLIC_BASE_URL: /uploads
+    volumes:
+      - backend-uploads:/app/apps/backend/uploads
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+volumes:
+  mongo-data:
+  backend-uploads:

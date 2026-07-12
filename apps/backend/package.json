@@ -14,6 +14,7 @@
     "test": "jest --runInBand"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1085.0",
     "@keyv/redis": "^4.2.0",
     "@kitchenpal/api-contract": "workspace:*",
     "@nest-lab/throttler-storage-redis": "^1.1.0",

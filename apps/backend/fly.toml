@@ -1,0 +1,61 @@
+# Fly.io app config for the KitchenPal backend.
+#
+# Rationale for Fly over Railway: a first-class `fly.toml` (config-as-code,
+# reviewable in git), cheap always-on small VMs with a generous free egress
+# tier, and — most relevantly for Socket.IO — explicit control over
+# concurrency/health-check behavior per-process. Railway is an equally valid
+# choice (its config would be `railway.json`, same env var contract below);
+# switch by re-pointing the deploy workflow if preferred.
+#
+# First deploy (one-time):
+#   fly launch --no-deploy --copy-config --name kitchenpal-backend
+#   fly secrets set MONGODB_URI=... REDIS_URL=... JWT_ACCESS_SECRET=... \
+#     SOCKET_CORS_ORIGINS=... STORAGE_PROVIDER=s3 S3_BUCKET=... S3_REGION=... \
+#     S3_ACCESS_KEY_ID=... S3_SECRET_ACCESS_KEY=... ADMIN_EMAILS=... \
+#     ADMIN_BOOTSTRAP_SECRET=...
+#   fly deploy --config apps/backend/fly.toml --dockerfile apps/backend/Dockerfile
+#
+# Subsequent deploys: `fly deploy` (see docs/deployment.md for the full runbook
+# and the complete required-env-var list).
+
+app = "kitchenpal-backend"
+primary_region = "sin" # Singapore — closest Fly region to the target market.
+
+[build]
+  dockerfile = "apps/backend/Dockerfile"
+
+[env]
+  PORT = "3001"
+  NODE_ENV = "production"
+
+# Socket.IO chat/notifications: a client's handshake and every subsequent poll
+# in that session must land on the SAME machine ("sticky sessions"), because
+# the in-memory part of engine.io session state is per-process. Fly's
+# `fly-replay`/instance routing does not give free stickiness for HTTP
+# long-polling across machines, so this app runs the Redis adapter
+# (@socket.io/redis-adapter, already wired in `AuthenticatedIoAdapter` when
+# NODE_ENV=production and REDIS_URL is set) so events fan out correctly across
+# instances regardless of which one a given socket lands on. If a future
+# non-Fly platform lacks any adapter-level fanout, prefer WebSocket-only
+# transport (`transports: ["websocket"]` client-side) over polling, since a
+# WebSocket holds one long-lived connection to a single machine.
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = false # always-on: Socket.IO/BullMQ workers should not cold-start
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    path = "/health/ready"
+    port = 3001
+    timeout = "5s"
+    type = "http"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

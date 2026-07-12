@@ -70,13 +70,53 @@ describe("envSchema production guardrails", () => {
     }
   });
 
-  it("accepts production with real Redis, non-localhost Mongo, a JWT secret, and a socket allowlist", () => {
+  it("rejects production with STORAGE_PROVIDER=local", () => {
     const result = envSchema.safeParse({
       NODE_ENV: "production",
       REDIS_URL: "redis://cache.internal:6379",
       MONGODB_URI: "mongodb://db.internal:27017/kitchenpal",
       JWT_ACCESS_SECRET: "a-strong-production-secret",
       SOCKET_CORS_ORIGINS: "https://app.kitchenpal.example",
+      STORAGE_PROVIDER: "local",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((i) => i.path[0] === "STORAGE_PROVIDER"),
+      ).toBe(true);
+    }
+  });
+
+  it("rejects production with STORAGE_PROVIDER=s3 but no bucket/region", () => {
+    const result = envSchema.safeParse({
+      NODE_ENV: "production",
+      REDIS_URL: "redis://cache.internal:6379",
+      MONGODB_URI: "mongodb://db.internal:27017/kitchenpal",
+      JWT_ACCESS_SECRET: "a-strong-production-secret",
+      SOCKET_CORS_ORIGINS: "https://app.kitchenpal.example",
+      STORAGE_PROVIDER: "s3",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "S3_BUCKET")).toBe(
+        true,
+      );
+      expect(result.error.issues.some((i) => i.path[0] === "S3_REGION")).toBe(
+        true,
+      );
+    }
+  });
+
+  it("accepts production with real Redis, non-localhost Mongo, a JWT secret, a socket allowlist, and S3 storage", () => {
+    const result = envSchema.safeParse({
+      NODE_ENV: "production",
+      REDIS_URL: "redis://cache.internal:6379",
+      MONGODB_URI: "mongodb://db.internal:27017/kitchenpal",
+      JWT_ACCESS_SECRET: "a-strong-production-secret",
+      SOCKET_CORS_ORIGINS: "https://app.kitchenpal.example",
+      STORAGE_PROVIDER: "s3",
+      S3_BUCKET: "kitchenpal-prod-uploads",
+      S3_REGION: "ap-southeast-1",
     });
     expect(result.success).toBe(true);
   });

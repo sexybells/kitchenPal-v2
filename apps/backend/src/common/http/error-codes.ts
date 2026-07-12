@@ -17,6 +17,7 @@ export const ErrorCode = {
   CONFLICT: "CONFLICT",
   OPTIMISTIC_LOCK_CONFLICT: "OPTIMISTIC_LOCK_CONFLICT",
   RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
   INTERNAL_SERVER_ERROR: "INTERNAL_SERVER_ERROR",
 } as const;
 
@@ -37,6 +38,8 @@ export function defaultCodeForStatus(status: number): ErrorCodeValue {
       return ErrorCode.CONFLICT;
     case HttpStatus.TOO_MANY_REQUESTS:
       return ErrorCode.RATE_LIMIT_EXCEEDED;
+    case HttpStatus.SERVICE_UNAVAILABLE:
+      return ErrorCode.SERVICE_UNAVAILABLE;
     default:
       return ErrorCode.INTERNAL_SERVER_ERROR;
   }

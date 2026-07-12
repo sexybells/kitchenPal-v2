@@ -1,9 +1,15 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Query,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import {
   paginationQuerySchema,
   type PaginationQuery,
 } from "@kitchenpal/api-contract";
-import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { ApiOkResponse, ApiOperation, ApiTags, ApiServiceUnavailableResponse } from "@nestjs/swagger";
+import { ErrorCode } from "../../common/http/error-codes";
 import { Public } from "../../common/scope/public.decorator";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { HealthReport, HealthService } from "./health.service";
@@ -21,10 +27,26 @@ export class HealthController {
     return this.health.check();
   }
 
+  /**
+   * Readiness probe for the deploy platform's health check (Fly/Railway). Unlike
+   * `/health` (always 200, used for plain liveness), this returns 503 when Mongo
+   * is not connected so the platform stops routing traffic to — and restarts —
+   * an instance that cannot serve requests, instead of reporting it as healthy.
+   */
   @Get("ready")
-  @ApiOperation({ summary: "Readiness probe" })
+  @ApiOperation({ summary: "Readiness probe (503 when a dependency is down)" })
+  @ApiOkResponse({ description: "Ready to serve traffic" })
+  @ApiServiceUnavailableResponse({ description: "A required dependency (MongoDB) is unavailable" })
   ready(): HealthReport {
-    return this.health.check();
+    const report = this.health.check();
+    if (report.status !== "ok") {
+      throw new ServiceUnavailableException({
+        code: ErrorCode.SERVICE_UNAVAILABLE,
+        message: "Not ready: MongoDB is not connected",
+        details: report as unknown as Record<string, unknown>,
+      });
+    }
+    return report;
   }
 
   /**

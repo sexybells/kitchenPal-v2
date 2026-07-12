@@ -55,10 +55,24 @@ export const envSchema = z
     EMAIL_FROM: z.string().default("KitchenPal <noreply@kitchenpal.local>"),
     // Base URL used to build links inside verification/reset emails.
     APP_WEB_URL: z.string().default("http://localhost:3000"),
-    // Local filesystem storage for uploaded avatars (S3 adapter in production).
+    // Storage transport: `local` writes to disk (dev only); `s3` writes to an
+    // S3-compatible bucket (required in production — enforced below).
+    STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
+    // Local filesystem storage for uploaded avatars (STORAGE_PROVIDER=local).
     UPLOAD_DIR: z.string().default("./uploads"),
-    // Public base URL under which stored uploads are served.
+    // Public base URL under which stored uploads are served. For `local` this is
+    // the static-mount prefix; for `s3` this is the bucket's public/CDN URL.
     UPLOAD_PUBLIC_BASE_URL: z.string().default("/uploads"),
+    // S3 (or S3-compatible: R2, MinIO, ...) bucket config, required only when
+    // STORAGE_PROVIDER=s3. Credentials are optional when the process has an
+    // ambient IAM role/instance profile; when absent, the AWS SDK's default
+    // credential chain is used.
+    S3_BUCKET: z.string().min(1).optional(),
+    S3_REGION: z.string().min(1).optional(),
+    S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    // Override endpoint for S3-compatible providers; unset for real AWS S3.
+    S3_ENDPOINT: z.string().min(1).optional(),
     // Food-vision providers for pantry scans. Both optional: when neither is set
     // (dev/test) scans degrade to an empty, manual-entry result — never a crash
     // and never fabricated detections. OpenAI is primary, Gemini the fallback.
@@ -142,6 +156,32 @@ export const envSchema = z
         message:
           "SOCKET_CORS_ORIGINS must list the allowed browser origins in production (no wildcard).",
       });
+    }
+    // Local disk storage does not survive a redeploy/restart on most container
+    // platforms (Fly/Railway) and is never shared across instances, so it is
+    // fail-closed in production: STORAGE_PROVIDER=s3 with a real bucket/region
+    // is required.
+    if (env.STORAGE_PROVIDER !== "s3") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["STORAGE_PROVIDER"],
+        message: "STORAGE_PROVIDER must be 's3' in production.",
+      });
+    } else {
+      if (!env.S3_BUCKET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["S3_BUCKET"],
+          message: "S3_BUCKET is required in production when STORAGE_PROVIDER=s3.",
+        });
+      }
+      if (!env.S3_REGION) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["S3_REGION"],
+          message: "S3_REGION is required in production when STORAGE_PROVIDER=s3.",
+        });
+      }
     }
   });
 
