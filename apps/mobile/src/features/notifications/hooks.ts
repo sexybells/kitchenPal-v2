@@ -32,9 +32,11 @@ export const useMarkNotificationRead = () => {
 export const useMarkAllRead = () => {
   const client = useQueryClient();
   return useMutation({
+    // Never abort the whole batch on one failure — mark what we can, then always
+    // refetch so the list reflects whichever writes landed.
     mutationFn: (unreadIds: string[]) =>
-      Promise.all(unreadIds.map((id) => notificationsApi.markRead(id))),
-    onSuccess: () =>
+      Promise.allSettled(unreadIds.map((id) => notificationsApi.markRead(id))),
+    onSettled: () =>
       client.invalidateQueries({ queryKey: notificationKeys.list }),
   });
 };

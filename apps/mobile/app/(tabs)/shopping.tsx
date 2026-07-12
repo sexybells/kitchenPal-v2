@@ -183,7 +183,22 @@ export default function ShoppingScreen() {
               onPress={onAdd}
               testID="shopping-add-submit"
             />
+            {addItem.error ? (
+              <Text variant="body-m" color="danger" testID="shopping-add-error">
+                {resolveErrorMessage(addItem.error, t)}
+              </Text>
+            ) : null}
           </Card>
+
+          {toggle.error || remove.error ? (
+            <Text
+              variant="body-m"
+              color="danger"
+              testID="shopping-mutation-error"
+            >
+              {resolveErrorMessage(toggle.error ?? remove.error, t)}
+            </Text>
+          ) : null}
 
           {summary.total === 0 ? (
             <EmptyState
@@ -203,7 +218,9 @@ export default function ShoppingScreen() {
                     <ShoppingItemRow
                       key={item.id}
                       item={item}
-                      disabled={toggle.isPending || remove.isPending}
+                      disabled={
+                        toggle.isPending || remove.isPending || addItem.isPending
+                      }
                       onToggle={() =>
                         toggle.mutate({
                           itemId: item.id,

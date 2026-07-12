@@ -35,6 +35,11 @@ export const en: TranslationBundle = {
     validation: "Some details aren't valid. Please review and try again.",
     rateLimited: "Too many attempts. Please wait a moment and try again.",
     emailTaken: "That email is already in use.",
+    conflict: "There was a conflict, please try again.",
+    staleWrite: "The list just changed. Please try again.",
+    forbidden: "You don't have permission to do this.",
+    notFound: "The requested item could not be found.",
+    unavailable: "The service is temporarily unavailable. Please try again later.",
   },
   language: {
     title: "Choose your language",

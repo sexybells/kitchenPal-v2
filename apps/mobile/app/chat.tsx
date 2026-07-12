@@ -22,6 +22,7 @@ import { ChatInputBar } from "../src/features/chat/ChatInputBar";
 import { PollComposer } from "../src/features/chat/PollComposer";
 import { TypingIndicator } from "../src/features/chat/TypingIndicator";
 import type { ChatMessage } from "../src/features/chat/message-model";
+import { resolveErrorMessage } from "../src/lib/error-message";
 
 /**
  * Household chat: a realtime, membership-scoped message list carrying text/image
@@ -104,6 +105,18 @@ export default function ChatScreen() {
       }
     >
       <ChatHeader onBack={() => router.back()} connected={channel.connected} />
+
+      {sendImage.error ? (
+        <Text variant="body-m" color="danger" center testID="chat-image-error">
+          {resolveErrorMessage(sendImage.error, t)}
+        </Text>
+      ) : null}
+
+      {channel.actionError ? (
+        <Text variant="body-m" color="danger" center testID="chat-action-error">
+          {resolveErrorMessage(channel.actionError, t)}
+        </Text>
+      ) : null}
 
       {channel.isLoading ? (
         <LoadingState label={t("common.loading")} />

@@ -38,6 +38,8 @@ export interface ChatChannel {
   typingUserIds: string[];
   isLoading: boolean;
   isError: boolean;
+  /** Last failed real-time action (e.g. a rejected vote) for user feedback. */
+  actionError: unknown;
   refetch: () => void;
   send: (text: string) => void;
   retry: (message: ChatMessage) => void;
@@ -58,7 +60,13 @@ export function useChatChannel(
   const [connected, setConnected] = useState(false);
   const [rejected, setRejected] = useState(false);
   const [typingUserIds, setTypingUserIds] = useState<string[]>([]);
+  const [actionError, setActionError] = useState<unknown>(null);
   const markedRef = useRef<Set<string>>(new Set());
+  // One expiry timer per typing peer, reset on each repeat signal and cleared on
+  // unmount so a still-typing peer isn't dropped early and no timer leaks.
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
 
   const history = useQuery({
     queryKey: chatKeys.messages(householdId),
@@ -94,6 +102,7 @@ export function useChatChannel(
     const offRejected = chatSocket.on("joinRejected", (payload) => {
       if (payload.householdId === householdId) setRejected(true);
     });
+    const timers = typingTimersRef.current;
     const offTyping = chatSocket.on("typing", (payload) => {
       if (payload.householdId !== householdId || payload.userId === currentUserId) {
         return;
@@ -101,9 +110,14 @@ export function useChatChannel(
       setTypingUserIds((ids) =>
         ids.includes(payload.userId) ? ids : [...ids, payload.userId],
       );
-      setTimeout(() => {
+      // Reset any in-flight expiry so a peer who keeps typing stays in the set.
+      const existing = timers.get(payload.userId);
+      if (existing) clearTimeout(existing);
+      const timer = setTimeout(() => {
+        timers.delete(payload.userId);
         setTypingUserIds((ids) => ids.filter((id) => id !== payload.userId));
       }, TYPING_TTL_MS);
+      timers.set(payload.userId, timer);
     });
 
     return () => {
@@ -113,6 +127,8 @@ export function useChatChannel(
       offRead();
       offRejected();
       offTyping();
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
       chatSocket.leaveHousehold();
     };
   }, [householdId, currentUserId]);
@@ -169,12 +185,13 @@ export function useChatChannel(
 
   const castVote = useCallback(
     (messageId: string, optionId: string) => {
+      setActionError(null);
       chatSocket
         .castVote(householdId, messageId, optionId)
         .then((message) =>
           setMessages((list) => applyServerMessage(list, message)),
         )
-        .catch(() => undefined);
+        .catch((error: unknown) => setActionError(error));
     },
     [householdId],
   );
@@ -190,6 +207,7 @@ export function useChatChannel(
     typingUserIds,
     isLoading: history.isLoading,
     isError: history.isError,
+    actionError,
     refetch: () => void history.refetch(),
     send,
     retry,

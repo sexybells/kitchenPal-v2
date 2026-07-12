@@ -137,6 +137,14 @@ export const useCook = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CookMealInput) => pantryApi.cook(input),
-    onSuccess: () => invalidatePantry(client),
+    // Cooking consumes pantry items, so every recipe's "có sẵn / cần mua" split
+    // is now stale — invalidate the pantry-match family alongside the pantry.
+    onSuccess: () => {
+      void invalidatePantry(client);
+      void client.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "recipes" && query.queryKey[1] === "pantry-match",
+      });
+    },
   });
 };

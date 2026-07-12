@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { renderWithProviders } from "../../../test-utils/renderWithProviders";
 import { shoppingApi } from "../../../api/shopping";
 import { mealPlansApi } from "../../../api/recipes";
@@ -30,12 +30,14 @@ jest.mock("../../../api/recipes", () => ({
 
 const mockedCurrent = shoppingApi.current as jest.MockedFunction<typeof shoppingApi.current>;
 const mockedUpdate = shoppingApi.updateItem as jest.MockedFunction<typeof shoppingApi.updateItem>;
+const mockedAdd = shoppingApi.addItem as jest.MockedFunction<typeof shoppingApi.addItem>;
 const mockedPlan = mealPlansApi.current as jest.MockedFunction<typeof mealPlansApi.current>;
 
 describe("ShoppingScreen", () => {
   beforeEach(() => {
     mockedCurrent.mockReset();
     mockedUpdate.mockReset();
+    mockedAdd.mockReset();
     mockedPlan.mockReset().mockRejectedValue(
       new ApiClientError({ code: "NOT_FOUND", message: "no plan", status: 404 }),
     );
@@ -108,5 +110,32 @@ describe("ShoppingScreen", () => {
       ).toBe(false),
     );
     expect(mockedCurrent.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("surfaces a localized error when adding an item fails", async () => {
+    mockedCurrent.mockResolvedValue(makeList({ version: 2, items: [] }));
+    mockedAdd.mockRejectedValue(
+      new ApiClientError({
+        code: "OPTIMISTIC_LOCK_CONFLICT",
+        message: "stale version",
+        status: 409,
+      }),
+    );
+
+    await renderWithProviders(<ShoppingScreen />);
+    await waitFor(() => expect(screen.getByTestId("shopping-add-name")).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId("shopping-add-name"), "Cà chua");
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("shopping-add-submit"));
+    });
+
+    await waitFor(() => expect(mockedAdd).toHaveBeenCalledTimes(1));
+    // The failure is shown (localized), never the raw English server string.
+    await waitFor(() => expect(screen.getByTestId("shopping-add-error")).toBeTruthy());
+    expect(screen.getByText("The list just changed. Please try again.")).toBeTruthy();
+    expect(screen.queryByText("stale version")).toBeNull();
   });
 });

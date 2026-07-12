@@ -33,6 +33,11 @@ export const vi = {
     validation: "Thông tin chưa hợp lệ. Vui lòng kiểm tra lại.",
     rateLimited: "Bạn thao tác quá nhanh. Vui lòng thử lại sau giây lát.",
     emailTaken: "Email này đã được sử dụng.",
+    conflict: "Có xung đột, vui lòng thử lại.",
+    staleWrite: "Danh sách vừa thay đổi. Vui lòng thử lại.",
+    forbidden: "Bạn không có quyền thực hiện thao tác này.",
+    notFound: "Không tìm thấy nội dung yêu cầu.",
+    unavailable: "Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau.",
   },
   language: {
     title: "Chọn ngôn ngữ",
