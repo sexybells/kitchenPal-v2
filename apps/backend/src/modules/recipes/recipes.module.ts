@@ -116,5 +116,8 @@ const httpClientProvider = {
     recipeAiProvidersProvider,
     httpClientProvider,
   ],
+  // Shopping (a later phase) generates lists from a meal plan's recipes, so it
+  // needs to resolve plans and read recipe ingredients within scope.
+  exports: [MealPlanRepository, RecipeRepository],
 })
 export class RecipesModule {}

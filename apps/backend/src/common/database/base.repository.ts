@@ -115,6 +115,7 @@ abstract class AbstractRepository<T extends BaseDocumentFields> {
     base: FilterQuery<T>,
     id: string,
     actor: Actor,
+    session?: ClientSession,
   ): Promise<HydratedDocument<T> | null> {
     return this.model
       .findOneAndUpdate(
@@ -123,7 +124,7 @@ abstract class AbstractRepository<T extends BaseDocumentFields> {
           { $set: { deletedAt: new Date() } } as UpdateQuery<T>,
           actor,
         ),
-        { new: true },
+        { new: true, session },
       )
       .exec();
   }
@@ -244,8 +245,12 @@ export abstract class ScopedRepository<
     return this.model.countDocuments(this.scopedFilter(scope, filter)).exec();
   }
 
-  create(scope: ScopeContext, data: Partial<T>): Promise<HydratedDocument<T>> {
-    return this.model.create({
+  async create(
+    scope: ScopeContext,
+    data: Partial<T>,
+    session?: ClientSession,
+  ): Promise<HydratedDocument<T>> {
+    const doc = {
       ...data,
       scope: scope.scope,
       householdId: scope.scope === "household" ? scope.householdId : null,
@@ -253,7 +258,11 @@ export abstract class ScopedRepository<
       updatedBy: scope.userId,
       deletedAt: null,
       version: 0,
-    } as unknown as T);
+    } as unknown as T;
+    // `Model.create` only accepts a session in its array form; pass a single-doc
+    // array so an insert can join a transaction (e.g. expense + budget deduction).
+    const [created] = await this.model.create([doc], { session });
+    return created as HydratedDocument<T>;
   }
 
   updateWithVersion(
@@ -276,7 +285,13 @@ export abstract class ScopedRepository<
   softDelete(
     scope: ScopeContext,
     id: string,
+    session?: ClientSession,
   ): Promise<HydratedDocument<T> | null> {
-    return this.softDeleteWhere(this.scopedFilter(scope), id, scope.userId);
+    return this.softDeleteWhere(
+      this.scopedFilter(scope),
+      id,
+      scope.userId,
+      session,
+    );
   }
 }

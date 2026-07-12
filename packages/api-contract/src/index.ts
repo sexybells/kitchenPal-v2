@@ -10,3 +10,5 @@ export * from "./users.js";
 export * from "./pantry.js";
 export * from "./recipes.js";
 export * from "./meal-plan.js";
+export * from "./shopping.js";
+export * from "./spending.js";
