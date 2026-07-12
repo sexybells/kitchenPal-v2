@@ -155,6 +155,9 @@ describe("Auth and identity (e2e)", () => {
         .post("/auth/register")
         .send({ email, password: "supersecret", displayName: "Dupe" });
       expect(dupe.status).toBe(409);
+      // Email-taken has its own code, distinct from the generic CONFLICT used by
+      // scan-confirm / budget-overlap, so clients can map it unambiguously.
+      expect(dupe.body.error.code).toBe("EMAIL_ALREADY_EXISTS");
 
       const wrong = await request(server)
         .post("/auth/login")

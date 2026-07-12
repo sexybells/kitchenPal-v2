@@ -7,6 +7,11 @@ import { HttpStatus } from "@nestjs/common";
  * `OPTIMISTIC_LOCK_CONFLICT` (HTTP 409) is the optimistic-concurrency contract:
  * a write was attempted against a stale `version`. The client should re-read the
  * document, rebase its change on the current `version`, and retry.
+ *
+ * `EMAIL_ALREADY_EXISTS` (HTTP 409) is the SPECIFIC "email is taken" conflict for
+ * sign-up/social-link. It is distinct from the generic `CONFLICT` so clients can
+ * show an "email already in use" message without mistaking an unrelated 409
+ * (e.g. a pantry-scan-confirm or budget-overlap conflict) for an email clash.
  */
 export const ErrorCode = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
@@ -15,6 +20,7 @@ export const ErrorCode = {
   FORBIDDEN: "FORBIDDEN",
   NOT_FOUND: "NOT_FOUND",
   CONFLICT: "CONFLICT",
+  EMAIL_ALREADY_EXISTS: "EMAIL_ALREADY_EXISTS",
   OPTIMISTIC_LOCK_CONFLICT: "OPTIMISTIC_LOCK_CONFLICT",
   RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
   SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",

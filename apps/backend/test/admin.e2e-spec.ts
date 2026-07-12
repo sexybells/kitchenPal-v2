@@ -74,9 +74,15 @@ describe("Admin, subscriptions, reports & settings (e2e)", () => {
     };
   }
 
-  // The admin account is a singleton across the suite; register once, then any
-  // later call just re-bootstraps (idempotent) and logs in for a fresh token.
+  // The admin account is a singleton across the suite. Register/bootstrap/login
+  // once and cache the session; the admin's own roles never change in these
+  // tests, and the access token outlives the suite — this also avoids tripping
+  // the login rate limiter across the many tests that need an admin.
+  let adminCache: TestUser | null = null;
   async function makeAdmin(): Promise<TestUser> {
+    if (adminCache) {
+      return adminCache;
+    }
     await request(server)
       .post("/auth/register")
       .send({ email: ADMIN_EMAIL, password: "supersecret", displayName: "Root" });
@@ -88,10 +94,11 @@ describe("Admin, subscriptions, reports & settings (e2e)", () => {
       .post("/auth/login")
       .send({ email: ADMIN_EMAIL, password: "supersecret" });
     expect(login.status).toBe(200);
-    return {
+    adminCache = {
       token: login.body.data.tokens.accessToken as string,
       userId: login.body.data.user.id as string,
     };
+    return adminCache;
   }
 
   it("blocks non-admins from admin routes with 403", async () => {
@@ -322,5 +329,74 @@ describe("Admin, subscriptions, reports & settings (e2e)", () => {
       accepted.body.data.tokens.accessToken as string,
     );
     expect(joinerClaims.activeHouseholdId).toBe(householdId);
+  });
+
+  describe("admin self-lockout guards", () => {
+    it("blocks an admin from suspending their own account", async () => {
+      const admin = await makeAdmin();
+      const res = await request(server)
+        .patch(`/admin/users/${admin.userId}/suspend`)
+        .set(auth(admin.token))
+        .send({ suspended: true });
+      expect(res.status).toBe(400);
+
+      // The account is still usable.
+      const self = await request(server)
+        .get(`/admin/users/${admin.userId}`)
+        .set(auth(admin.token));
+      expect(adminUserResponseSchema.parse(self.body.data).suspended).toBe(false);
+    });
+
+    it("blocks demoting the last remaining admin (self-demotion)", async () => {
+      const admin = await makeAdmin();
+      const res = await request(server)
+        .patch(`/admin/users/${admin.userId}/roles`)
+        .set(auth(admin.token))
+        .send({ roles: ["user"] });
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
+
+      const self = await request(server)
+        .get(`/admin/users/${admin.userId}`)
+        .set(auth(admin.token));
+      expect(adminUserResponseSchema.parse(self.body.data).roles).toContain(
+        "admin",
+      );
+    });
+
+    it("lets an admin demote a non-last admin", async () => {
+      const admin = await makeAdmin();
+      const other = await register();
+      // Promote another user to admin (adding a role is unrestricted).
+      const promoted = await request(server)
+        .patch(`/admin/users/${other.userId}/roles`)
+        .set(auth(admin.token))
+        .send({ roles: ["user", "admin"] });
+      expect(promoted.status).toBe(200);
+      expect(adminUserResponseSchema.parse(promoted.body.data).roles).toContain(
+        "admin",
+      );
+
+      // Now demoting them is allowed — the acting admin remains.
+      const demoted = await request(server)
+        .patch(`/admin/users/${other.userId}/roles`)
+        .set(auth(admin.token))
+        .send({ roles: ["user"] });
+      expect(demoted.status).toBe(200);
+      expect(
+        adminUserResponseSchema.parse(demoted.body.data).roles,
+      ).not.toContain("admin");
+    });
+
+    it("lets an admin suspend another user", async () => {
+      const admin = await makeAdmin();
+      const victim = await register();
+      const res = await request(server)
+        .patch(`/admin/users/${victim.userId}/suspend`)
+        .set(auth(admin.token))
+        .send({ suspended: true });
+      expect(res.status).toBe(200);
+      expect(adminUserResponseSchema.parse(res.body.data).suspended).toBe(true);
+    });
   });
 });

@@ -79,7 +79,7 @@ export class AuthService {
     const email = input.email.trim().toLowerCase();
     if (await this.users.findByEmail(email)) {
       throw new ConflictException({
-        code: ErrorCode.CONFLICT,
+        code: ErrorCode.EMAIL_ALREADY_EXISTS,
         message: "An account with this email already exists",
       });
     }
@@ -322,7 +322,7 @@ export class AuthService {
         // would let an attacker take over an account by claiming its address.
         if (!identity.emailVerified) {
           throw new ConflictException({
-            code: ErrorCode.CONFLICT,
+            code: ErrorCode.EMAIL_ALREADY_EXISTS,
             message:
               "This email already has an account. Sign in and link this provider from settings.",
           });

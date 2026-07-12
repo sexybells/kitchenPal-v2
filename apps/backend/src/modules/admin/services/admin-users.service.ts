@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type {
   AdminListQuery,
   AdminSuspendUserInput,
@@ -59,6 +64,31 @@ export class AdminUsersService {
   ): Promise<AdminUserResponse> {
     const user = await this.requireUser(id);
     const before = [...user.roles];
+
+    // Guard against locking every admin out of the console. A demotion is any
+    // change that strips `admin` from a current admin.
+    const isDemotion =
+      user.roles.includes("admin") && !input.roles.includes("admin");
+    if (isDemotion) {
+      if (actorId === id) {
+        throw new BadRequestException({
+          code: ErrorCode.BAD_REQUEST,
+          message: "You cannot remove your own admin role",
+        });
+      }
+      // Defense-in-depth: never let the last usable admin be demoted. (With the
+      // self-guard above the actor is normally a remaining admin, but this also
+      // holds if the acting admin is itself already suspended.)
+      const remainingAdmins =
+        (await this.countActiveAdmins()) - (user.suspendedAt === null ? 1 : 0);
+      if (remainingAdmins < 1) {
+        throw new ConflictException({
+          code: ErrorCode.CONFLICT,
+          message: "Cannot remove the last remaining admin",
+        });
+      }
+    }
+
     const updated = await this.users.updateWithVersion(
       user.id,
       user.version,
@@ -80,6 +110,14 @@ export class AdminUsersService {
     id: string,
     input: AdminSuspendUserInput,
   ): Promise<AdminUserResponse> {
+    // An admin must not suspend their own account: it would immediately brick
+    // their session with no in-app path back in.
+    if (input.suspended && actorId === id) {
+      throw new BadRequestException({
+        code: ErrorCode.BAD_REQUEST,
+        message: "You cannot suspend your own account",
+      });
+    }
     const user = await this.requireUser(id);
     const suspendedAt = input.suspended ? new Date() : null;
     const updated = await this.users.updateWithVersion(
@@ -99,6 +137,14 @@ export class AdminUsersService {
       metadata: input.reason ? { reason: input.reason } : undefined,
     });
     return toAdminUserResponse(updated);
+  }
+
+  /** Count of admins whose accounts are usable (not suspended, not deleted). */
+  private countActiveAdmins(): Promise<number> {
+    return this.users.count({
+      roles: "admin",
+      suspendedAt: null,
+    } as FilterQuery<UserEntity>);
   }
 
   private async requireUser(id: string): Promise<UserDoc> {
