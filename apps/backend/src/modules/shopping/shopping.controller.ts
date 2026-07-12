@@ -25,7 +25,10 @@ import {
   type ShoppingListResponse,
   type UpdateShoppingItemInput,
 } from "@kitchenpal/api-contract";
-import { CurrentScope, Scope } from "../../common/scope/scope.decorator";
+import {
+  CurrentScope,
+  HouseholdScope,
+} from "../../common/scope/scope.decorator";
 import type { ScopeContext } from "../../common/scope/scope-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { ShoppingService } from "./services/shopping.service";
@@ -34,7 +37,7 @@ import { ShoppingService } from "./services/shopping.service";
  * Shopping lists: generate from a meal plan, receive ad-hoc needed items from the
  * pantry-refill / recipe add-missing seams, read the current list, and
  * version-guarded item CRUD (including the `bought` toggle). Every route is
- * `@Scope("personal")`. `current` is declared before `:id` so it is not captured
+ * `@HouseholdScope()`. `current` is declared before `:id` so it is not captured
  * as an id.
  */
 @ApiTags("shopping")
@@ -44,7 +47,7 @@ export class ShoppingController {
   constructor(private readonly shopping: ShoppingService) {}
 
   @Post("generate")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Generate a shopping list from a meal plan" })
   generate(
@@ -56,7 +59,7 @@ export class ShoppingController {
   }
 
   @Post("needed-items")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Add needed items to the current list (refill / add-missing seam)",
@@ -70,7 +73,7 @@ export class ShoppingController {
   }
 
   @Get("current")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Get the caller's current shopping list" })
   getCurrent(
     @CurrentScope() scope: ScopeContext,
@@ -79,7 +82,7 @@ export class ShoppingController {
   }
 
   @Get(":id")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Get a shopping list by id" })
   getById(
     @CurrentScope() scope: ScopeContext,
@@ -89,7 +92,7 @@ export class ShoppingController {
   }
 
   @Post(":id/items")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Add an item to a list (versioned)" })
   addItem(
     @CurrentScope() scope: ScopeContext,
@@ -101,7 +104,7 @@ export class ShoppingController {
   }
 
   @Patch(":id/items/:itemId")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Edit an item or toggle bought (versioned)" })
   updateItem(
     @CurrentScope() scope: ScopeContext,
@@ -114,7 +117,7 @@ export class ShoppingController {
   }
 
   @Delete(":id/items/:itemId")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Remove an item from a list (versioned)" })
   deleteItem(
     @CurrentScope() scope: ScopeContext,

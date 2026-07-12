@@ -44,7 +44,11 @@ import {
   type UpdateRecipeInput,
 } from "@kitchenpal/api-contract";
 import type { PageResult } from "../../common/http/page-result";
-import { CurrentScope, Scope } from "../../common/scope/scope.decorator";
+import {
+  CurrentScope,
+  HouseholdScope,
+  Scope,
+} from "../../common/scope/scope.decorator";
 import type { ScopeContext } from "../../common/scope/scope-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { RecipesService } from "./services/recipes.service";
@@ -52,9 +56,12 @@ import { RecipesService } from "./services/recipes.service";
 /**
  * Recipes: personal/household/system CRUD, the community feed, publish,
  * favorites, ratings/comments, dietary preferences, AI suggestions, external
- * search, URL import (draft → confirm), and pantry-match. Every route is
- * `@Scope("personal")` — the scope guard binds the caller to their own scope,
- * and the service applies the cross-scope visibility rules for reads.
+ * search, URL import (draft → confirm), and pantry-match. Recipe content,
+ * favorites, and ratings are `@HouseholdScope()` — a household shares its recipe
+ * collection, favorites, and reviews, while a solo user keeps their own. Dietary
+ * PREFERENCES stay `@Scope("personal")`: allergens and diet are per-user safety
+ * data that must never be blended across members. The service applies the
+ * cross-scope visibility rules for reads (own/household + community + system).
  *
  * Static sub-paths are declared before the `:id` routes so they are matched
  * first (Nest resolves routes in declaration order).
@@ -66,7 +73,7 @@ export class RecipesController {
   constructor(private readonly recipes: RecipesService) {}
 
   @Get()
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "List the caller's own recipes" })
   list(
     @CurrentScope() scope: ScopeContext,
@@ -76,7 +83,7 @@ export class RecipesController {
   }
 
   @Post()
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Create a recipe" })
   create(
     @CurrentScope() scope: ScopeContext,
@@ -86,7 +93,7 @@ export class RecipesController {
   }
 
   @Get("community")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Browse published community recipes" })
   community(
     @CurrentScope() scope: ScopeContext,
@@ -96,7 +103,7 @@ export class RecipesController {
   }
 
   @Get("favorites")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "List the caller's favorite recipes" })
   favorites(
     @CurrentScope() scope: ScopeContext,
@@ -125,7 +132,7 @@ export class RecipesController {
   }
 
   @Post("ai-suggestions/preferences")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "AI recipe suggestions from dietary preferences" })
   suggestFromPreferences(
@@ -136,7 +143,7 @@ export class RecipesController {
   }
 
   @Post("ai-suggestions/pantry")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "AI recipe suggestions from available pantry" })
   suggestFromPantry(
@@ -147,7 +154,7 @@ export class RecipesController {
   }
 
   @Get("external-search")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Search the web for recipes (Google Custom Search)" })
   externalSearch(
     @CurrentScope() scope: ScopeContext,
@@ -158,7 +165,7 @@ export class RecipesController {
   }
 
   @Post("import-from-url")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Scrape a URL into a reviewable recipe draft" })
   importFromUrl(
@@ -169,7 +176,7 @@ export class RecipesController {
   }
 
   @Post("imports/confirm")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Create a recipe from a confirmed import draft" })
   confirmImport(
     @CurrentScope() scope: ScopeContext,
@@ -179,7 +186,7 @@ export class RecipesController {
   }
 
   @Get(":id")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Get a recipe (own, community, or system)" })
   getById(
     @CurrentScope() scope: ScopeContext,
@@ -189,7 +196,7 @@ export class RecipesController {
   }
 
   @Patch(":id")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Update an owned recipe" })
   update(
     @CurrentScope() scope: ScopeContext,
@@ -200,7 +207,7 @@ export class RecipesController {
   }
 
   @Delete(":id")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Soft-delete an owned recipe" })
   async remove(
@@ -212,7 +219,7 @@ export class RecipesController {
   }
 
   @Patch(":id/publish")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Publish (or unpublish) an owned recipe to community" })
   publish(
     @CurrentScope() scope: ScopeContext,
@@ -223,7 +230,7 @@ export class RecipesController {
   }
 
   @Post(":id/favorite")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Mark a recipe as a favorite" })
   addFavorite(
@@ -234,7 +241,7 @@ export class RecipesController {
   }
 
   @Delete(":id/favorite")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Remove a recipe from favorites" })
   removeFavorite(
@@ -245,7 +252,7 @@ export class RecipesController {
   }
 
   @Post(":id/comments")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Rate/review a recipe (recomputes its rating)" })
   addComment(
     @CurrentScope() scope: ScopeContext,
@@ -256,7 +263,7 @@ export class RecipesController {
   }
 
   @Get(":id/comments")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "List a recipe's ratings/reviews" })
   listComments(
     @CurrentScope() scope: ScopeContext,
@@ -268,7 +275,7 @@ export class RecipesController {
   }
 
   @Post(":id/pantry-match")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Classify a recipe's ingredients vs. the pantry" })
   pantryMatch(

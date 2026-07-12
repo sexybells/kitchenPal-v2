@@ -37,10 +37,23 @@ export const RecipeCommentSchema = SchemaFactory.createForClass(RecipeComment);
 RecipeCommentSchema.plugin(baseSchemaPlugin);
 RecipeCommentSchema.plugin(scopedSchemaPlugin);
 
-// One rating per user per recipe: a user's repeat rating updates their existing
-// one instead of stacking. Partial on live docs so a soft-deleted rating does
-// not block a fresh one, and so `reviewCount` counts distinct reviewers.
+// One rating per recipe within a scope: a repeat rating updates the existing one
+// instead of stacking. A personal rating is unique per creator; a household
+// rating is unique per HOUSEHOLD — the household leaves one shared review per
+// recipe. Partial on live docs so a soft-deleted rating does not block a fresh
+// one, and scoped so a personal rating and a household rating of the same recipe
+// stay independent (separate buckets).
 RecipeCommentSchema.index(
   { recipeId: 1, createdBy: 1 },
-  { unique: true, partialFilterExpression: { deletedAt: null } },
+  {
+    unique: true,
+    partialFilterExpression: { deletedAt: null, scope: "personal" },
+  },
+);
+RecipeCommentSchema.index(
+  { recipeId: 1, householdId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { deletedAt: null, scope: "household" },
+  },
 );

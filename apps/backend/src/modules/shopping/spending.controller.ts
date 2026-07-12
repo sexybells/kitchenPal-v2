@@ -29,7 +29,10 @@ import {
   type SpendingSummary,
 } from "@kitchenpal/api-contract";
 import type { PageResult } from "../../common/http/page-result";
-import { CurrentScope, Scope } from "../../common/scope/scope.decorator";
+import {
+  CurrentScope,
+  HouseholdScope,
+} from "../../common/scope/scope.decorator";
 import type { ScopeContext } from "../../common/scope/scope-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { SpendingService } from "./services/spending.service";
@@ -37,7 +40,7 @@ import { SpendingService } from "./services/spending.service";
 /**
  * Spending: expenses (logging auto-computes each item's unit price and deducts
  * the active budget), budgets (30-day cycles), and analytics (summary, stats,
- * price-history). Every route is `@Scope("personal")`. All money is VND (integer
+ * price-history). Every route is `@HouseholdScope()`. All money is VND (integer
  * đồng).
  */
 @ApiTags("spending")
@@ -47,7 +50,7 @@ export class SpendingController {
   constructor(private readonly spending: SpendingService) {}
 
   @Post("expenses")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Log an expense (deducts the active budget)" })
   createExpense(
     @CurrentScope() scope: ScopeContext,
@@ -57,7 +60,7 @@ export class SpendingController {
   }
 
   @Get("expenses")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "List expenses (filter by category / date range)" })
   listExpenses(
     @CurrentScope() scope: ScopeContext,
@@ -67,7 +70,7 @@ export class SpendingController {
   }
 
   @Delete("expenses/:id")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Delete an expense (refunds the budget)" })
   async deleteExpense(
@@ -79,7 +82,7 @@ export class SpendingController {
   }
 
   @Post("budgets")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Set the budget for a new 30-day cycle" })
   createBudget(
     @CurrentScope() scope: ScopeContext,
@@ -89,7 +92,7 @@ export class SpendingController {
   }
 
   @Get("budgets/current")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Get the active budget cycle" })
   getCurrentBudget(
     @CurrentScope() scope: ScopeContext,
@@ -98,7 +101,7 @@ export class SpendingController {
   }
 
   @Get("spending/summary")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Category totals + budget context for a period" })
   getSummary(
     @CurrentScope() scope: ScopeContext,
@@ -109,7 +112,7 @@ export class SpendingController {
   }
 
   @Get("spending/stats")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Time-bucketed spending series for charts" })
   getStats(
     @CurrentScope() scope: ScopeContext,
@@ -120,7 +123,7 @@ export class SpendingController {
   }
 
   @Get("spending/price-history")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Unit-price trend per item over time" })
   getPriceHistory(
     @CurrentScope() scope: ScopeContext,

@@ -1,7 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import type { MealType, RecipePreferenceResponse } from "@kitchenpal/api-contract";
 import type { HydratedDocument } from "mongoose";
-import type { ScopeContext } from "../../../common/scope/scope-context";
+import {
+  toPersonalScope,
+  type ScopeContext,
+} from "../../../common/scope/scope-context";
 import { PantryItemRepository } from "../../pantry/repositories/pantry-item.repository";
 import { RecipeAiService } from "../ai/recipe-ai.service";
 import {
@@ -60,8 +63,10 @@ export class RecipeSelectionService {
       userId: string;
     },
   ): Promise<SelectionResult> {
+    // Dietary preferences are per-user (allergens are safety-critical), so they
+    // are read in the caller's personal scope even when acting in a household.
     const preference = toPreferenceResponse(
-      await this.preferences.findForOwner(scope),
+      await this.preferences.findForOwner(toPersonalScope(options.userId)),
     );
 
     const candidates = await this.recipes.findCandidates(scope, {

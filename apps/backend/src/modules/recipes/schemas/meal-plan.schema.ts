@@ -49,9 +49,22 @@ export const MealPlanSchema = SchemaFactory.createForClass(MealPlan);
 MealPlanSchema.plugin(baseSchemaPlugin);
 MealPlanSchema.plugin(scopedSchemaPlugin);
 
-// One live plan per owner per week, so a concurrent double-create cannot insert
-// duplicate plans for the same week (the service returns the existing one).
+// One live plan per week within a scope, so a concurrent double-create cannot
+// insert duplicate plans for the same week (the service returns the existing
+// one). The uniqueness key follows the scope owner: a personal plan is unique
+// per creator, a household plan is unique per HOUSEHOLD (any member's create for
+// that week converges on the one shared plan, never a per-member duplicate).
 MealPlanSchema.index(
   { createdBy: 1, weekStart: 1 },
-  { unique: true, partialFilterExpression: { deletedAt: null } },
+  {
+    unique: true,
+    partialFilterExpression: { deletedAt: null, scope: "personal" },
+  },
+);
+MealPlanSchema.index(
+  { householdId: 1, weekStart: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { deletedAt: null, scope: "household" },
+  },
 );

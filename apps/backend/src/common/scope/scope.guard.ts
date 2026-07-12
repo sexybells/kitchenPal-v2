@@ -8,21 +8,29 @@ import {
 import { Reflector } from "@nestjs/core";
 import type { DataScope } from "@kitchenpal/api-contract";
 import type { Request } from "express";
+import type { AuthUser } from "./auth-user";
 import { ErrorCode } from "../http/error-codes";
 import { MembershipVerifier } from "./membership";
-import { SCOPE_METADATA_KEY } from "./scope.decorator";
+import type { ScopeContext } from "./scope-context";
+import {
+  HOUSEHOLD_PREFERRED_METADATA_KEY,
+  SCOPE_METADATA_KEY,
+} from "./scope.decorator";
 
 /**
- * Resolves and enforces the data-scope declared by `@Scope()`:
+ * Resolves and enforces the data-scope declared by `@Scope()` or
+ * `@HouseholdScope()`:
  * - `personal`: any authenticated user, scoped to their own documents.
  * - `household`: requires an active household the caller is a VERIFIED active
  *   member of — the token's `activeHouseholdId` is never trusted on its own.
  * - `system`: server-owned data, restricted to admins.
+ * - household-preferred (`@HouseholdScope()`): resolves to `household` when the
+ *   caller has a verified active membership, else falls back to `personal`.
  *
- * Routes without `@Scope()` pass through untouched. The resolved context is
- * attached to `request.scopeContext` for repositories to consume. Non-HTTP
- * contexts (e.g. the chat WebSocket gateway, which authenticates itself) bypass
- * this guard.
+ * Routes with none of these decorators pass through untouched. The resolved
+ * context is attached to `request.scopeContext` for repositories to consume.
+ * Non-HTTP contexts (e.g. the chat WebSocket gateway, which authenticates
+ * itself) bypass this guard.
  */
 @Injectable()
 export class ScopeGuard implements CanActivate {
@@ -36,12 +44,18 @@ export class ScopeGuard implements CanActivate {
       return true;
     }
 
+    const householdPreferred = this.reflector.getAllAndOverride<
+      boolean | undefined
+    >(HOUSEHOLD_PREFERRED_METADATA_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
     const required = this.reflector.getAllAndOverride<DataScope | undefined>(
       SCOPE_METADATA_KEY,
       [context.getHandler(), context.getClass()],
     );
 
-    if (!required) {
+    if (!required && !householdPreferred) {
       return true;
     }
 
@@ -52,6 +66,17 @@ export class ScopeGuard implements CanActivate {
         code: ErrorCode.UNAUTHORIZED,
         message: "Authentication required",
       });
+    }
+
+    if (householdPreferred) {
+      request.scopeContext = await this.resolveHouseholdPreferred(user);
+      return true;
+    }
+
+    // Past this point a fixed `@Scope()` is set (the household-preferred path
+    // returned above); the narrowing keeps `required` non-undefined below.
+    if (!required) {
+      return true;
     }
 
     if (required === "household") {
@@ -89,5 +114,28 @@ export class ScopeGuard implements CanActivate {
     };
 
     return true;
+  }
+
+  /**
+   * Resolves the scope for a `@HouseholdScope()` route: `household` when the
+   * caller has an active household they are a VERIFIED current active member of,
+   * otherwise `personal`. The fall-back to personal is deliberate — a caller with
+   * no household, or one whose membership was revoked, transparently acts on
+   * their own data instead of being denied.
+   */
+  private async resolveHouseholdPreferred(
+    user: AuthUser,
+  ): Promise<ScopeContext> {
+    if (
+      user.activeHouseholdId &&
+      (await this.membership.isActiveMember(user.id, user.activeHouseholdId))
+    ) {
+      return {
+        scope: "household",
+        userId: user.id,
+        householdId: user.activeHouseholdId,
+      };
+    }
+    return { scope: "personal", userId: user.id, householdId: null };
   }
 }

@@ -29,16 +29,19 @@ import {
   type UpdatePantryItemInput,
 } from "@kitchenpal/api-contract";
 import type { PageResult } from "../../common/http/page-result";
-import { CurrentScope, Scope } from "../../common/scope/scope.decorator";
+import {
+  CurrentScope,
+  HouseholdScope,
+} from "../../common/scope/scope.decorator";
 import type { ScopeContext } from "../../common/scope/scope-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { PantryService } from "./services/pantry.service";
 
 /**
  * Pantry items and the cook→deplete→refill loop. Every route is
- * `@Scope("personal")`, so the scope guard binds the caller to their own items.
- * Household-scoped pantries land with the household module in a later phase; the
- * schema and repository already support that scope.
+ * `@HouseholdScope()`: a member acting inside a household shares the household's
+ * pantry with every other member, while a solo user works in their own personal
+ * pantry. The schema and repository partition both buckets by scope.
  */
 @ApiTags("pantry")
 @ApiBearerAuth()
@@ -47,7 +50,7 @@ export class PantryController {
   constructor(private readonly pantry: PantryService) {}
 
   @Get("items")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "List pantry items (filter, search, expiry sort)" })
   listItems(
     @CurrentScope() scope: ScopeContext,
@@ -57,7 +60,7 @@ export class PantryController {
   }
 
   @Post("items")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Add a pantry item" })
   createItem(
     @CurrentScope() scope: ScopeContext,
@@ -68,7 +71,7 @@ export class PantryController {
   }
 
   @Patch("items/:id")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Update a pantry item" })
   updateItem(
     @CurrentScope() scope: ScopeContext,
@@ -80,7 +83,7 @@ export class PantryController {
   }
 
   @Delete("items/:id")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Soft-delete a pantry item" })
   async deleteItem(
@@ -92,7 +95,7 @@ export class PantryController {
   }
 
   @Get("refill-suggestions")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Items running low/out to refill (shopping seam)" })
   refillSuggestions(
     @CurrentScope() scope: ScopeContext,
@@ -101,7 +104,7 @@ export class PantryController {
   }
 
   @Post("consume")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Deplete items after cooking" })
   consume(
@@ -112,7 +115,7 @@ export class PantryController {
   }
 
   @Post("cook")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Cook a meal: deplete its ingredients and return refill suggestions",

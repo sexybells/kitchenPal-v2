@@ -20,7 +20,10 @@ import {
   type ConfirmScanInput,
   type PantryScanResponse,
 } from "@kitchenpal/api-contract";
-import { CurrentScope, Scope } from "../../common/scope/scope.decorator";
+import {
+  CurrentScope,
+  HouseholdScope,
+} from "../../common/scope/scope.decorator";
 import type { ScopeContext } from "../../common/scope/scope-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import type { UploadedImage } from "../uploads/uploads.service";
@@ -28,7 +31,9 @@ import { MAX_SCAN_BYTES, PantryScanService } from "./services/pantry-scan.servic
 
 /**
  * Photo-scan endpoints: upload a photo, review AI detections, confirm them into
- * pantry items. `@Scope("personal")` binds every scan to its owner.
+ * pantry items. `@HouseholdScope()` binds each scan (and the items it
+ * materializes) to the caller's active household, or to the caller personally
+ * when they have none.
  */
 @ApiTags("pantry")
 @ApiBearerAuth()
@@ -37,7 +42,7 @@ export class PantryScansController {
   constructor(private readonly scans: PantryScanService) {}
 
   @Post()
-  @Scope("personal")
+  @HouseholdScope()
   @UseInterceptors(
     FileInterceptor("file", {
       limits: { fileSize: MAX_SCAN_BYTES, files: 1 },
@@ -53,7 +58,7 @@ export class PantryScansController {
   }
 
   @Get(":id")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Get a scan and its detections" })
   getScan(
     @CurrentScope() scope: ScopeContext,
@@ -63,7 +68,7 @@ export class PantryScansController {
   }
 
   @Post(":id/confirm")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Materialize accepted detections into pantry items" })
   confirmScan(
     @CurrentScope() scope: ScopeContext,

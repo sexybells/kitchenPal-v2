@@ -55,8 +55,11 @@ ShoppingListSchema.plugin(baseSchemaPlugin);
 ShoppingListSchema.plugin(scopedSchemaPlugin);
 
 // At most one live list per meal plan, so regenerating a plan's list merges into
-// the same document rather than spawning duplicates. Personal ad-hoc lists have
-// mealPlanId null and are exempt (partial index only covers real plan ids).
+// the same document rather than spawning duplicates. A `mealPlanId` is a unique
+// reference to a single plan, and a plan lives in exactly one bucket (personal or
+// one household), so this global key is already correct under household scope —
+// members regenerating a shared plan's list converge on the same document. Ad-hoc
+// lists have `mealPlanId` null and are exempt (partial index covers real ids only).
 ShoppingListSchema.index(
   { mealPlanId: 1 },
   {

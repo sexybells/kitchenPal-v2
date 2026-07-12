@@ -10,3 +10,12 @@ export interface ScopeContext {
   userId: string;
   householdId?: string | null;
 }
+
+/**
+ * A personal scope pinned to a user, regardless of any household they are acting
+ * in. Used for data that stays per-user even inside a household — e.g. dietary
+ * preferences, whose allergens must never be blended across members.
+ */
+export function toPersonalScope(userId: string): ScopeContext {
+  return { scope: "personal", userId, householdId: null };
+}

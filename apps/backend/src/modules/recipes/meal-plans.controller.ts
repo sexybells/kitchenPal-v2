@@ -20,16 +20,19 @@ import {
   type MealPlanResponse,
   type UpdateSlotInput,
 } from "@kitchenpal/api-contract";
-import { CurrentScope, Scope } from "../../common/scope/scope.decorator";
+import {
+  CurrentScope,
+  HouseholdScope,
+} from "../../common/scope/scope.decorator";
 import type { ScopeContext } from "../../common/scope/scope-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { MealPlansService } from "./services/meal-plans.service";
 
 /**
  * Weekly meal plans: create, read the current week, atomic version-guarded slot
- * edits, AI auto-fill, and clear. Every route is `@Scope("personal")`, binding
- * the caller to their own plans. `current` is declared before `:id` so it is not
- * captured as an id.
+ * edits, AI auto-fill, and clear. Every route is `@HouseholdScope()`, so a
+ * household shares one plan per week while a solo user keeps their own. `current`
+ * is declared before `:id` so it is not captured as an id.
  */
 @ApiTags("meal-plans")
 @ApiBearerAuth()
@@ -38,7 +41,7 @@ export class MealPlansController {
   constructor(private readonly plans: MealPlansService) {}
 
   @Post()
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Create a weekly meal plan with empty slots" })
   create(
     @CurrentScope() scope: ScopeContext,
@@ -48,7 +51,7 @@ export class MealPlansController {
   }
 
   @Get("current")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Get the plan for the current week (or the latest)" })
   getCurrent(
     @CurrentScope() scope: ScopeContext,
@@ -57,7 +60,7 @@ export class MealPlansController {
   }
 
   @Get(":id")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Get a meal plan by id" })
   getById(
     @CurrentScope() scope: ScopeContext,
@@ -67,7 +70,7 @@ export class MealPlansController {
   }
 
   @Patch(":id/slots/:slotId")
-  @Scope("personal")
+  @HouseholdScope()
   @ApiOperation({ summary: "Assign or clear the recipe in one slot (versioned)" })
   updateSlot(
     @CurrentScope() scope: ScopeContext,
@@ -79,7 +82,7 @@ export class MealPlansController {
   }
 
   @Post(":id/auto-fill")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Auto-fill empty slots from existing recipes (diet + pantry aware)",
@@ -93,7 +96,7 @@ export class MealPlansController {
   }
 
   @Post(":id/clear")
-  @Scope("personal")
+  @HouseholdScope()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Clear every slot in a plan" })
   clear(
