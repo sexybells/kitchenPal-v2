@@ -9,22 +9,33 @@ import { Reflector } from "@nestjs/core";
 import type { DataScope } from "@kitchenpal/api-contract";
 import type { Request } from "express";
 import { ErrorCode } from "../http/error-codes";
+import { MembershipVerifier } from "./membership";
 import { SCOPE_METADATA_KEY } from "./scope.decorator";
 
 /**
  * Resolves and enforces the data-scope declared by `@Scope()`:
  * - `personal`: any authenticated user, scoped to their own documents.
- * - `household`: requires an active household on the principal.
+ * - `household`: requires an active household the caller is a VERIFIED active
+ *   member of — the token's `activeHouseholdId` is never trusted on its own.
  * - `system`: server-owned data, restricted to admins.
  *
  * Routes without `@Scope()` pass through untouched. The resolved context is
- * attached to `request.scopeContext` for repositories to consume.
+ * attached to `request.scopeContext` for repositories to consume. Non-HTTP
+ * contexts (e.g. the chat WebSocket gateway, which authenticates itself) bypass
+ * this guard.
  */
 @Injectable()
 export class ScopeGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly membership: MembershipVerifier,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (context.getType() !== "http") {
+      return true;
+    }
+
     const required = this.reflector.getAllAndOverride<DataScope | undefined>(
       SCOPE_METADATA_KEY,
       [context.getHandler(), context.getClass()],
@@ -43,11 +54,25 @@ export class ScopeGuard implements CanActivate {
       });
     }
 
-    if (required === "household" && !user.activeHouseholdId) {
-      throw new ForbiddenException({
-        code: ErrorCode.FORBIDDEN,
-        message: "An active household is required for this action",
-      });
+    if (required === "household") {
+      if (!user.activeHouseholdId) {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: "An active household is required for this action",
+        });
+      }
+      // Fail closed: the household scope is granted only when the principal is a
+      // verified CURRENT active member, never from the token claim alone.
+      const isMember = await this.membership.isActiveMember(
+        user.id,
+        user.activeHouseholdId,
+      );
+      if (!isMember) {
+        throw new ForbiddenException({
+          code: ErrorCode.FORBIDDEN,
+          message: "You are not an active member of this household",
+        });
+      }
     }
 
     if (required === "system" && !user.roles.includes("admin")) {

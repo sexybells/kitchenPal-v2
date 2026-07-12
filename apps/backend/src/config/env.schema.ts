@@ -77,6 +77,18 @@ export const envSchema = z
     // never fabricates links).
     GOOGLE_SEARCH_API_KEY: z.string().min(1).optional(),
     GOOGLE_SEARCH_CX: z.string().min(1).optional(),
+    // Socket.IO CORS allowlist (comma-separated origins). NO wildcard is ever
+    // accepted: a browser origin must be listed explicitly. Empty = no browser
+    // origin allowed (native clients that send no Origin header still connect).
+    SOCKET_CORS_ORIGINS: z.string().optional(),
+    // Expo push notifications. When disabled/unset, push fanout degrades to a
+    // logged no-op (records are still created in-app). EXPO_ACCESS_TOKEN is
+    // optional even when enabled (Expo accepts unauthenticated sends).
+    EXPO_PUSH_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
   })
   // Production guardrails: the in-memory / localhost fallbacks used for local
   // development are unsafe in production (per-instance rate limiting that is
@@ -109,6 +121,18 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ["JWT_ACCESS_SECRET"],
         message: "JWT_ACCESS_SECRET is required in production.",
+      });
+    }
+    // The socket CORS allowlist must be set explicitly in production. Leaving it
+    // empty is fail-closed (all browser origins rejected) but silently breaks
+    // every web client, so require a deliberate value rather than a warn-only
+    // fallback.
+    if (!env.SOCKET_CORS_ORIGINS || env.SOCKET_CORS_ORIGINS.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SOCKET_CORS_ORIGINS"],
+        message:
+          "SOCKET_CORS_ORIGINS must list the allowed browser origins in production (no wildcard).",
       });
     }
   });

@@ -6,6 +6,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { AppLogger } from "./common/logging/app-logger.service";
+import { AuthenticatedIoAdapter } from "./common/socket/authenticated-io.adapter";
 import { APP_CONFIG, AppConfig } from "./config/env.schema";
 
 async function bootstrap(): Promise<void> {
@@ -16,6 +17,10 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(AppLogger));
   app.use(helmet());
   app.enableShutdownHooks();
+
+  // Realtime chat/notification gateway: CORS is pinned to an allowlist (no
+  // wildcard) and, in production, events fan across instances through Redis.
+  app.useWebSocketAdapter(new AuthenticatedIoAdapter(app));
 
   const config = app.get<AppConfig>(APP_CONFIG);
 

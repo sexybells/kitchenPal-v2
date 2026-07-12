@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { HouseholdModule } from "../household/household.module";
+import { ChatSpendingEvents } from "../household/services/chat-spending-events";
 import { PantryModule } from "../pantry/pantry.module";
 import { RecipesModule } from "../recipes/recipes.module";
 import { BudgetRepository } from "./repositories/budget.repository";
@@ -20,14 +22,16 @@ import { SpendingService } from "./services/spending.service";
 /**
  * Shopping & spending module. Shopping generates lists from meal plans (reusing
  * RecipesModule for plans/recipes and PantryModule for stock). Spending logs
- * expenses that atomically deduct budgets and exposes analytics. {@link
- * SpendingEvents} is the no-op chat-card / budget-alert seam a later chat phase
- * overrides; it is exported so that module can rebind it.
+ * expenses that atomically deduct budgets and exposes analytics. The
+ * {@link SpendingEvents} chat-card / budget-alert seam is rebound to the live
+ * {@link ChatSpendingEvents} from {@link HouseholdModule}, so a household-scoped
+ * expense posts a chat card and fans out a budget alert.
  */
 @Module({
   imports: [
     RecipesModule,
     PantryModule,
+    HouseholdModule,
     MongooseModule.forFeature([
       { name: ShoppingList.name, schema: ShoppingListSchema },
       { name: Expense.name, schema: ExpenseSchema },
@@ -38,11 +42,12 @@ import { SpendingService } from "./services/spending.service";
   providers: [
     ShoppingService,
     SpendingService,
-    SpendingEvents,
+    // The spending service depends on the SpendingEvents seam; bind it to the
+    // live household implementation so expense/budget cards actually post.
+    { provide: SpendingEvents, useExisting: ChatSpendingEvents },
     ShoppingListRepository,
     ExpenseRepository,
     BudgetRepository,
   ],
-  exports: [SpendingEvents],
 })
 export class ShoppingModule {}

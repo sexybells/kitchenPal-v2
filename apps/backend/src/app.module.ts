@@ -13,6 +13,7 @@ import { AppConfigModule } from "./config/config.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { JwtAuthGuard } from "./modules/auth/guards/jwt-auth.guard";
 import { HealthModule } from "./modules/health/health.module";
+import { HouseholdModule } from "./modules/household/household.module";
 import { LogsModule } from "./modules/logs/logs.module";
 import { PantryModule } from "./modules/pantry/pantry.module";
 import { RecipesModule } from "./modules/recipes/recipes.module";
@@ -41,6 +42,7 @@ import { UsersModule } from "./modules/users/users.module";
     UploadsModule,
     PantryModule,
     RecipesModule,
+    HouseholdModule,
     ShoppingModule,
   ],
   providers: [

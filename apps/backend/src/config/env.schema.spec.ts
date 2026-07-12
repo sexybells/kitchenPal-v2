@@ -55,12 +55,28 @@ describe("envSchema production guardrails", () => {
     }
   });
 
-  it("accepts production with real Redis, non-localhost Mongo, and a JWT secret", () => {
+  it("rejects production without a socket CORS allowlist", () => {
     const result = envSchema.safeParse({
       NODE_ENV: "production",
       REDIS_URL: "redis://cache.internal:6379",
       MONGODB_URI: "mongodb://db.internal:27017/kitchenpal",
       JWT_ACCESS_SECRET: "a-strong-production-secret",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((i) => i.path[0] === "SOCKET_CORS_ORIGINS"),
+      ).toBe(true);
+    }
+  });
+
+  it("accepts production with real Redis, non-localhost Mongo, a JWT secret, and a socket allowlist", () => {
+    const result = envSchema.safeParse({
+      NODE_ENV: "production",
+      REDIS_URL: "redis://cache.internal:6379",
+      MONGODB_URI: "mongodb://db.internal:27017/kitchenpal",
+      JWT_ACCESS_SECRET: "a-strong-production-secret",
+      SOCKET_CORS_ORIGINS: "https://app.kitchenpal.example",
     });
     expect(result.success).toBe(true);
   });

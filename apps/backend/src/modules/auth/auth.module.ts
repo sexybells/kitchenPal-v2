@@ -77,6 +77,6 @@ const emailAdapterProvider = {
     AuthService,
     emailAdapterProvider,
   ],
-  exports: [TokenService, UserRepository],
+  exports: [TokenService, UserRepository, EMAIL_ADAPTER],
 })
 export class AuthModule {}

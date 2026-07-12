@@ -24,6 +24,12 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
+    // The chat WebSocket gateway authenticates its own handshake; this HTTP guard
+    // must not run against socket message contexts (there is no HTTP request).
+    if (context.getType() !== "http") {
+      return true;
+    }
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),

@@ -25,6 +25,12 @@ export class ResponseInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<SuccessEnvelope> {
+    // Only HTTP responses are enveloped; the chat WebSocket gateway shapes its own
+    // acknowledgements and emitted events, so leave non-HTTP results untouched.
+    if (context.getType() !== "http") {
+      return next.handle() as Observable<SuccessEnvelope>;
+    }
+
     const request = context.switchToHttp().getRequest<Request>();
     const requestId = request.requestId ?? "";
 

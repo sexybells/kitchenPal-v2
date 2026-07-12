@@ -25,5 +25,8 @@ import { UsersService } from "./users.service";
   ],
   controllers: [UsersController],
   providers: [UsersService, UserSettingsRepository, TipsStateRepository],
+  // Exported so the notification fan-out can read a user's channel preferences
+  // and registered push tokens.
+  exports: [UserSettingsRepository],
 })
 export class UsersModule {}
