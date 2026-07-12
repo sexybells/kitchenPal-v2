@@ -21,6 +21,13 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
+    // WebSocket handshakes authenticate themselves; this guard is HTTP-only, like
+    // its sibling auth/scope guards. A future `@Roles` on a socket handler must
+    // not try to read an HTTP request that does not exist here.
+    if (context.getType() !== "http") {
+      return true;
+    }
+
     const required = this.reflector.getAllAndOverride<Role[] | undefined>(
       ROLES_METADATA_KEY,
       [context.getHandler(), context.getClass()],

@@ -6,7 +6,6 @@ import {
   HttpStatus,
   Patch,
   Post,
-  UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
@@ -23,7 +22,6 @@ import {
 } from "@kitchenpal/api-contract";
 import { CurrentScope, Scope } from "../../common/scope/scope.decorator";
 import { Roles } from "../../common/scope/roles.decorator";
-import { RolesGuard } from "../../common/scope/roles.guard";
 import type { ScopeContext } from "../../common/scope/scope-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { UsersService } from "./users.service";
@@ -99,7 +97,6 @@ export class UsersController {
 
   @Get("admin/overview")
   @Roles("admin")
-  @UseGuards(RolesGuard)
   @ApiOperation({ summary: "Admin-only platform snapshot" })
   adminOverview(): Promise<{ userCount: number }> {
     return this.users.adminOverview();

@@ -9,6 +9,10 @@ import type { AvatarUploadResponse } from "@kitchenpal/api-contract";
 import { ErrorCode } from "../../common/http/error-codes";
 import { UserRepository } from "../auth/repositories/user.repository";
 import {
+  UploadRepository,
+  type UploadEntity,
+} from "./repositories/upload.repository";
+import {
   STORAGE_ADAPTER,
   type StorageAdapter,
 } from "./storage/storage-adapter";
@@ -71,6 +75,7 @@ export class UploadsService {
   constructor(
     @Inject(STORAGE_ADAPTER) private readonly storage: StorageAdapter,
     private readonly users: UserRepository,
+    private readonly uploads: UploadRepository,
   ) {}
 
   async uploadAvatar(
@@ -114,6 +119,19 @@ export class UploadsService {
       user.version,
       { avatarUrl: stored.url },
       user.id,
+    );
+    // Record the stored object so admins can audit uploads without scanning the
+    // storage backend. Best-effort metadata only — never the bytes.
+    await this.uploads.create(
+      {
+        key: stored.key,
+        url: stored.url,
+        kind: "avatar",
+        contentType,
+        sizeBytes: file.size,
+        ownerUserId: userId,
+      } as unknown as Partial<UploadEntity>,
+      userId,
     );
     return { avatarUrl: stored.url };
   }

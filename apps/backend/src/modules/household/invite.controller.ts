@@ -1,6 +1,6 @@
 import { Controller, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import type { HouseholdResponse } from "@kitchenpal/api-contract";
+import type { HouseholdJoinResult } from "@kitchenpal/api-contract";
 import type { AuthUser } from "../../common/scope/auth-user";
 import { CurrentUser } from "../../common/scope/current-user.decorator";
 import { HouseholdService } from "./services/household.service";
@@ -18,11 +18,13 @@ export class InviteController {
 
   @Post(":code/accept")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Accept an invite code and join the household" })
+  @ApiOperation({
+    summary: "Accept an invite code and join; returns fresh tokens",
+  })
   accept(
     @CurrentUser() user: AuthUser,
     @Param("code") code: string,
-  ): Promise<HouseholdResponse> {
+  ): Promise<HouseholdJoinResult> {
     return this.households.acceptInvite(user.id, code);
   }
 }

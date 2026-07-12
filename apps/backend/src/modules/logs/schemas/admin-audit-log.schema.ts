@@ -19,8 +19,9 @@ export class AdminAuditLog {
   @Prop()
   targetType?: string;
 
-  @Prop({ type: SchemaTypes.ObjectId })
-  targetId?: Types.ObjectId;
+  /** Free-form target identifier: an ObjectId string, a setting key, etc. */
+  @Prop({ type: String })
+  targetId?: string;
 
   @Prop({ type: SchemaTypes.Mixed })
   metadata?: Record<string, unknown>;

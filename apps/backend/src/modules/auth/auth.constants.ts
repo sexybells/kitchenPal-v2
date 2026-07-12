@@ -6,6 +6,14 @@
 export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60; // 15 minutes
 export const REFRESH_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
 
+/**
+ * Default access-token lifetime for accounts holding the `admin` role. Admin
+ * sessions are privileged, so they get a shorter default TTL than regular users
+ * to bound the exposure window of a leaked admin token. Operators can override
+ * it via `ADMIN_ACCESS_TOKEN_TTL_SECONDS`.
+ */
+export const ADMIN_ACCESS_TOKEN_TTL_SECONDS = 10 * 60; // 10 minutes
+
 /** Access tokens are signed and verified with exactly this algorithm (pinned). */
 export const ACCESS_TOKEN_ALGORITHM = "HS256" as const;
 

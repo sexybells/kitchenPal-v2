@@ -9,6 +9,7 @@ import type { HydratedDocument } from "mongoose";
 import {
   ACCESS_TOKEN_ALGORITHM,
   ACCESS_TOKEN_TTL_SECONDS,
+  ADMIN_ACCESS_TOKEN_TTL_SECONDS,
   DEV_ACCESS_SECRET,
   REFRESH_TOKEN_TTL_SECONDS,
 } from "../auth.constants";
@@ -58,6 +59,7 @@ function unauthorized(message: string): UnauthorizedException {
 @Injectable()
 export class TokenService {
   private readonly jwt: JwtService;
+  private readonly adminAccessTtlSeconds: number;
 
   constructor(
     @Inject(APP_CONFIG) config: AppConfig,
@@ -65,6 +67,8 @@ export class TokenService {
     private readonly refreshTokens: RefreshTokenRepository,
     private readonly users: UserRepository,
   ) {
+    this.adminAccessTtlSeconds =
+      config.ADMIN_ACCESS_TOKEN_TTL_SECONDS ?? ADMIN_ACCESS_TOKEN_TTL_SECONDS;
     let secret: string;
     if (config.JWT_ACCESS_SECRET) {
       secret = config.JWT_ACCESS_SECRET;
@@ -80,6 +84,17 @@ export class TokenService {
     this.jwt = new JwtService({ secret });
   }
 
+  /**
+   * Access-token lifetime for a subject: the shorter admin TTL when the account
+   * holds the `admin` role, otherwise the standard user TTL. Keeps privileged
+   * sessions short without affecting regular users.
+   */
+  private accessTtlFor(subject: TokenSubject): number {
+    return subject.roles.includes("admin")
+      ? this.adminAccessTtlSeconds
+      : ACCESS_TOKEN_TTL_SECONDS;
+  }
+
   signAccessToken(subject: TokenSubject): string {
     const payload: AccessTokenPayload = {
       sub: subject.id,
@@ -88,7 +103,7 @@ export class TokenService {
     };
     return this.jwt.sign(payload, {
       algorithm: ACCESS_TOKEN_ALGORITHM,
-      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      expiresIn: this.accessTtlFor(subject),
     });
   }
 
@@ -160,7 +175,7 @@ export class TokenService {
       tokens: {
         accessToken: this.signAccessToken(subject),
         refreshToken: successorToken,
-        expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+        expiresIn: this.accessTtlFor(subject),
       },
       subject,
     };
@@ -198,7 +213,7 @@ export class TokenService {
     return {
       accessToken: this.signAccessToken(subject),
       refreshToken,
-      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      expiresIn: this.accessTtlFor(subject),
     };
   }
 }

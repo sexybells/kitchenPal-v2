@@ -8,6 +8,7 @@ import type {
   CreateHouseholdInput,
   CreateInviteInput,
   HouseholdInviteResponse,
+  HouseholdJoinResult,
   HouseholdMemberResponse,
   HouseholdResponse,
   UpdateHouseholdInput,
@@ -17,6 +18,7 @@ import type { HydratedDocument } from "mongoose";
 import { ErrorCode } from "../../../common/http/error-codes";
 import { UserEntity, UserRepository } from "../../auth/repositories/user.repository";
 import { generateOpaqueToken } from "../../auth/services/secret-token";
+import { TokenService, toTokenSubject } from "../../auth/services/token.service";
 import {
   HouseholdEntity,
   HouseholdRepository,
@@ -56,12 +58,13 @@ export class HouseholdService {
     private readonly users: UserRepository,
     private readonly notifications: NotificationService,
     private readonly realtime: RealtimeEmitter,
+    private readonly tokens: TokenService,
   ) {}
 
   async create(
     userId: string,
     input: CreateHouseholdInput,
-  ): Promise<HouseholdResponse> {
+  ): Promise<HouseholdJoinResult> {
     const household = await this.households.create(
       { name: input.name, ownerUserId: userId, membersCount: 1 } as unknown as Partial<HouseholdEntity>,
       userId,
@@ -75,10 +78,10 @@ export class HouseholdService {
       } as unknown as Partial<HouseholdMemberEntity>,
       userId,
     );
-    // Make the new household the caller's active context (personal mode stays
-    // available; the next issued token carries this selection).
+    // Make the new household the caller's active context and hand back fresh
+    // tokens carrying it, so the client acts in household scope immediately.
     await this.setActiveHouseholdIfUnset(userId, household.id, true);
-    return toHouseholdResponse(household, "owner");
+    return this.joinResult(userId, household, "owner");
   }
 
   async list(userId: string): Promise<HouseholdResponse[]> {
@@ -290,7 +293,10 @@ export class HouseholdService {
    * concurrent double-accept can never add two seats. Accepting is the only path
    * to membership.
    */
-  async acceptInvite(userId: string, code: string): Promise<HouseholdResponse> {
+  async acceptInvite(
+    userId: string,
+    code: string,
+  ): Promise<HouseholdJoinResult> {
     // Short-circuit an already-active member BEFORE claiming, so redeeming a code
     // you don't need does not burn the single-use invite for someone else.
     const peek = await this.invites.findByCode(code);
@@ -303,7 +309,7 @@ export class HouseholdService {
         const household = await this.requireHousehold(
           peek.householdId.toString(),
         );
-        return toHouseholdResponse(household, current.role);
+        return this.joinResult(userId, household, current.role);
       }
     }
 
@@ -322,7 +328,7 @@ export class HouseholdService {
     const existing = await this.members.findMembership(householdId, userId);
     if (existing && existing.status === "active") {
       const household = await this.requireHousehold(householdId);
-      return toHouseholdResponse(household, existing.role);
+      return this.joinResult(userId, household, existing.role);
     }
     if (existing) {
       await this.members.updateWithVersion(
@@ -355,7 +361,30 @@ export class HouseholdService {
     });
     // Re-read so the response reflects the just-incremented member count.
     const household = await this.requireHousehold(householdId);
-    return toHouseholdResponse(household, "member");
+    return this.joinResult(userId, household, "member");
+  }
+
+  /**
+   * Builds a join result: the household response plus a fresh token pair. The
+   * user is re-read so the signed access token carries the up-to-date
+   * `activeHouseholdId`, letting the client enter household scope with no
+   * re-login. A new refresh family is minted (the old one stays valid until it
+   * expires or is rotated), mirroring how sign-in issues tokens.
+   */
+  private async joinResult(
+    userId: string,
+    household: HouseholdDoc,
+    role: HouseholdMemberEntity["role"],
+  ): Promise<HouseholdJoinResult> {
+    const user = await this.users.findById(userId);
+    if (!user) {
+      throw new NotFoundException({
+        code: ErrorCode.NOT_FOUND,
+        message: "Account no longer exists",
+      });
+    }
+    const tokens = await this.tokens.issueTokenPair(toTokenSubject(user));
+    return { ...toHouseholdResponse(household, role), tokens };
   }
 
   private async requireHousehold(householdId: string): Promise<HouseholdDoc> {

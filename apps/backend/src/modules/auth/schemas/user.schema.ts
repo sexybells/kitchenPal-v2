@@ -59,6 +59,13 @@ export class User {
   @Prop({ type: SchemaTypes.ObjectId, default: null })
   activeHouseholdId!: Types.ObjectId | null;
 
+  /**
+   * Set by an admin to suspend the account. A suspended user is rejected at
+   * login and by the auth guard, so an existing token cannot outlive suspension.
+   */
+  @Prop({ type: Date, default: null })
+  suspendedAt!: Date | null;
+
   @Prop({ type: [AuthProviderSchema], default: [] })
   authProviders!: AuthProvider[];
 }

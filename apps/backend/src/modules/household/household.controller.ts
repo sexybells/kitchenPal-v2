@@ -19,6 +19,7 @@ import {
   type CreateHouseholdInput,
   type CreateInviteInput,
   type HouseholdInviteResponse,
+  type HouseholdJoinResult,
   type HouseholdMemberResponse,
   type HouseholdResponse,
   type UpdateHouseholdInput,
@@ -41,11 +42,13 @@ export class HouseholdController {
   constructor(private readonly households: HouseholdService) {}
 
   @Post()
-  @ApiOperation({ summary: "Create a household (caller becomes owner)" })
+  @ApiOperation({
+    summary: "Create a household (caller becomes owner); returns fresh tokens",
+  })
   create(
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(createHouseholdSchema)) body: CreateHouseholdInput,
-  ): Promise<HouseholdResponse> {
+  ): Promise<HouseholdJoinResult> {
     return this.households.create(user.id, body);
   }
 

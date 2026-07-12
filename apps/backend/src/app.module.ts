@@ -7,9 +7,11 @@ import { ResponseInterceptor } from "./common/http/response.interceptor";
 import { LoggingModule } from "./common/logging/logging.module";
 import { RequestIdMiddleware } from "./common/logging/request-id.middleware";
 import { AppQueueModule } from "./common/queue/queue.module";
+import { RolesGuard } from "./common/scope/roles.guard";
 import { ScopeGuard } from "./common/scope/scope.guard";
 import { AppThrottlerModule } from "./common/throttler/throttler.module";
 import { AppConfigModule } from "./config/config.module";
+import { AdminModule } from "./modules/admin/admin.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { JwtAuthGuard } from "./modules/auth/guards/jwt-auth.guard";
 import { HealthModule } from "./modules/health/health.module";
@@ -18,6 +20,7 @@ import { LogsModule } from "./modules/logs/logs.module";
 import { PantryModule } from "./modules/pantry/pantry.module";
 import { RecipesModule } from "./modules/recipes/recipes.module";
 import { ShoppingModule } from "./modules/shopping/shopping.module";
+import { SubscriptionsModule } from "./modules/subscriptions/subscriptions.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { UsersModule } from "./modules/users/users.module";
 
@@ -44,11 +47,16 @@ import { UsersModule } from "./modules/users/users.module";
     RecipesModule,
     HouseholdModule,
     ShoppingModule,
+    SubscriptionsModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Runs after authentication so `request.user` is populated; enforces every
+    // `@Roles(...)` route (admin console) globally, not just where remembered.
+    { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: ScopeGuard },
   ],
 })

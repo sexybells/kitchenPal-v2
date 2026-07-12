@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tokenPairSchema } from "./auth.js";
 import { objectIdSchema } from "./pantry.js";
 
 /**
@@ -30,6 +31,18 @@ export const householdResponseSchema = z.object({
   updatedAt: z.string(),
 });
 export type HouseholdResponse = z.infer<typeof householdResponseSchema>;
+
+/**
+ * Returned when joining a household changes the caller's active scope (creating
+ * a household or accepting an invite): the household plus a FRESH token pair
+ * whose access token already carries the new `activeHouseholdId`. The client
+ * switches into household scope immediately — no manual re-login or refresh
+ * round-trip. Read/list household endpoints omit `tokens`.
+ */
+export const householdJoinResultSchema = householdResponseSchema.extend({
+  tokens: tokenPairSchema,
+});
+export type HouseholdJoinResult = z.infer<typeof householdJoinResultSchema>;
 
 /** A single membership row within a household. */
 export const householdMemberResponseSchema = z.object({

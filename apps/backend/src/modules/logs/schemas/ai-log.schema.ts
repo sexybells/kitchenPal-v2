@@ -31,6 +31,18 @@ export class AiLog {
 
   @Prop({ type: SchemaTypes.ObjectId })
   userId?: Types.ObjectId;
+
+  /** Prompt/completion token counts and derived USD cost, when the provider
+   * reports usage. Optional so callers that cannot measure cost simply omit
+   * them; the admin cost report sums whatever is present. */
+  @Prop({ type: Number, default: null })
+  promptTokens?: number | null;
+
+  @Prop({ type: Number, default: null })
+  completionTokens?: number | null;
+
+  @Prop({ type: Number, default: null })
+  costUsd?: number | null;
 }
 
 export const AiLogSchema = SchemaFactory.createForClass(AiLog);

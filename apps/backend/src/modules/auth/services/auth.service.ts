@@ -111,6 +111,12 @@ export class AuthService {
         message: "Invalid email or password",
       });
     }
+    if (user.suspendedAt) {
+      throw new UnauthorizedException({
+        code: ErrorCode.UNAUTHORIZED,
+        message: "This account has been suspended",
+      });
+    }
     return this.buildResult(user);
   }
 

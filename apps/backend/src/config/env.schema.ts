@@ -33,6 +33,14 @@ export const envSchema = z
     // Reserved for future signed-refresh strategies. Refresh tokens are opaque
     // and stored hashed, so this is not required for rotation to work.
     JWT_REFRESH_SECRET: z.string().min(1).optional(),
+    // Shorter access-token TTL (seconds) for accounts with the `admin` role, to
+    // bound the exposure of a leaked admin session. Defaults to 10 minutes.
+    ADMIN_ACCESS_TOKEN_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(24 * 60 * 60)
+      .default(10 * 60),
     // Comma-separated allowlist of emails that may be elevated to `admin`.
     ADMIN_EMAILS: z.string().optional(),
     // Shared secret required to perform the admin bootstrap elevation.
