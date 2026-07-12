@@ -28,7 +28,8 @@ import {
 } from "../src/features/recipes/IngredientChecklist";
 import { RatingStars } from "../src/features/recipes/RatingStars";
 import { dishEmoji, mealTypeLabel } from "../src/features/recipes/labels";
-import { addMissingToShopping } from "../src/features/recipes/add-missing-to-shopping";
+import { neededItemsFromMatch } from "../src/features/recipes/add-missing-to-shopping";
+import { useAddNeededItems } from "../src/features/shopping/hooks";
 import { useCook } from "../src/features/pantry/hooks";
 import { generateIdempotencyKey } from "../src/features/pantry/stock";
 import { resolveErrorMessage } from "../src/lib/error-message";
@@ -50,6 +51,7 @@ export default function RecipeDetailScreen() {
   const comments = useRecipeComments(recipeId);
   const addComment = useAddComment();
   const publish = usePublishRecipe();
+  const addMissing = useAddNeededItems();
   const cook = useCook();
 
   const idempotencyKey = useRef(generateIdempotencyKey());
@@ -103,9 +105,13 @@ export default function RecipeDetailScreen() {
   };
 
   const onAddMissing = () => {
-    const result = addMissingToShopping(match.data?.needed ?? []);
-    // Honest stub: nothing is persisted until the Shopping module lands.
-    setCartNote(t("meals.addMissingStub", { count: result.count }));
+    const needed = match.data?.needed ?? [];
+    if (needed.length === 0) return;
+    // Real hand-off to the shopping list via POST /shopping/needed-items.
+    addMissing.mutate(
+      { items: neededItemsFromMatch(needed, recipeId) },
+      { onSuccess: () => setCartNote(t("meals.addMissingDone", { count: needed.length })) },
+    );
   };
 
   const onSubmitReview = () => {
@@ -179,12 +185,18 @@ export default function RecipeDetailScreen() {
           variant="secondary"
           icon="shopping"
           disabled={(match.data?.needed.length ?? 0) === 0}
+          loading={addMissing.isPending}
           onPress={onAddMissing}
           testID="recipe-add-missing"
         />
         {cartNote ? (
-          <Text variant="body-m" color="text-muted" testID="recipe-cart-note">
+          <Text variant="body-m" color="success" testID="recipe-cart-note">
             {cartNote}
+          </Text>
+        ) : null}
+        {addMissing.error ? (
+          <Text variant="body-m" color="danger">
+            {resolveErrorMessage(addMissing.error, t)}
           </Text>
         ) : null}
         <Button

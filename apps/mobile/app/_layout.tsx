@@ -62,6 +62,10 @@ function RootNavigator() {
       <Stack.Screen name="recipe" options={{ presentation: "card" }} />
       <Stack.Screen name="recipe-import" options={{ presentation: "modal" }} />
       <Stack.Screen name="spending" options={{ presentation: "card" }} />
+      <Stack.Screen name="expense-log" options={{ presentation: "modal" }} />
+      <Stack.Screen name="budget" options={{ presentation: "card" }} />
+      <Stack.Screen name="spending-analytics" options={{ presentation: "card" }} />
+      <Stack.Screen name="price-history" options={{ presentation: "card" }} />
       <Stack.Screen name="household" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="settings" />

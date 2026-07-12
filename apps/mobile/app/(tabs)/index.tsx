@@ -6,6 +6,7 @@ import {
   Screen,
   Text,
   Card,
+  Button,
   Avatar,
   Badge,
   EmptyState,
@@ -22,6 +23,8 @@ import {
 import { PantryItemRow } from "../../src/features/pantry/PantryItemRow";
 import { StockPill } from "../../src/features/pantry/StockPill";
 import { expiryInfo } from "../../src/features/pantry/stock";
+import { useAddNeededItems } from "../../src/features/shopping/hooks";
+import { neededItemsFromRefill } from "../../src/features/recipes/add-missing-to-shopping";
 
 interface MenuAction {
   icon: IconName;
@@ -36,6 +39,7 @@ export default function HomeScreen() {
   const me = useMe();
   const items = usePantryItems();
   const refill = useRefillSuggestions();
+  const addToShopping = useAddNeededItems();
 
   const menuActions: MenuAction[] = [
     { icon: "spending", href: "/spending", label: t("menu.spending") },
@@ -157,16 +161,33 @@ export default function HomeScreen() {
             <EmptyState title={t("cook.refillEmpty")} icon="shopping" />
           </Card>
         ) : (
-          <Card>
-            {suggestions.slice(0, 4).map((suggestion) => (
-              <View key={suggestion.pantryItemId} style={styles.lowRow}>
-                <Text variant="title" color="text" numberOfLines={1} style={styles.lowName}>
-                  {suggestion.name}
-                </Text>
-                <StockPill state={suggestion.stockState} />
-              </View>
-            ))}
-          </Card>
+          <>
+            <Card>
+              {suggestions.slice(0, 4).map((suggestion) => (
+                <View key={suggestion.pantryItemId} style={styles.lowRow}>
+                  <Text variant="title" color="text" numberOfLines={1} style={styles.lowName}>
+                    {suggestion.name}
+                  </Text>
+                  <StockPill state={suggestion.stockState} />
+                </View>
+              ))}
+            </Card>
+            <Button
+              label={t("shopping.addLowToList")}
+              variant="secondary"
+              icon="shopping"
+              loading={addToShopping.isPending}
+              onPress={() =>
+                addToShopping.mutate({ items: neededItemsFromRefill(suggestions) })
+              }
+              testID="home-refill-add"
+            />
+            {addToShopping.isSuccess ? (
+              <Text variant="body-m" color="success" testID="home-refill-added">
+                {t("shopping.addedToList", { count: suggestions.length })}
+              </Text>
+            ) : null}
+          </>
         )}
       </Section>
     </Screen>
