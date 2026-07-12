@@ -74,7 +74,7 @@ export class RecipesController {
 
   @Get()
   @HouseholdScope()
-  @ApiOperation({ summary: "List the caller's own recipes" })
+  @ApiOperation({ summary: "List recipes in the active scope (personal or household)" })
   list(
     @CurrentScope() scope: ScopeContext,
     @Query(new ZodValidationPipe(recipeQuerySchema)) query: RecipeQuery,
@@ -104,7 +104,7 @@ export class RecipesController {
 
   @Get("favorites")
   @HouseholdScope()
-  @ApiOperation({ summary: "List the caller's favorite recipes" })
+  @ApiOperation({ summary: "List favorite recipes in the active scope (personal or household)" })
   favorites(
     @CurrentScope() scope: ScopeContext,
   ): Promise<{ recipes: RecipeResponse[] }> {

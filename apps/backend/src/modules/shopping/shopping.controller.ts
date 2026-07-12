@@ -74,7 +74,7 @@ export class ShoppingController {
 
   @Get("current")
   @HouseholdScope()
-  @ApiOperation({ summary: "Get the caller's current shopping list" })
+  @ApiOperation({ summary: "Get the current shopping list in the active scope (personal or household)" })
   getCurrent(
     @CurrentScope() scope: ScopeContext,
   ): Promise<ShoppingListResponse> {
