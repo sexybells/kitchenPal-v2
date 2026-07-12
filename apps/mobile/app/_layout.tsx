@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { I18nextProvider } from "react-i18next";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
 import {
   useFonts,
   PlusJakartaSans_400Regular,
@@ -18,9 +19,23 @@ import { changeLocale, i18n, initI18n } from "../src/i18n";
 import { useSessionStore } from "../src/store/session";
 import { useUiStore } from "../src/store/ui";
 import { resolveAuthRedirect } from "../src/lib/auth-routing";
+import {
+  registerPushToken,
+  routeForPushResponse,
+} from "../src/features/notifications/push";
 import { theme } from "../src/theme";
 
 void SplashScreen.preventAutoHideAsync();
+
+// Foreground presentation for incoming push notifications.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 // Initialise i18n once at module load with the device locale; a persisted
 // locale (if any) is applied during boot hydration below.
@@ -44,8 +59,31 @@ function useAuthRedirect() {
   }, [status, hasCompletedOnboarding, segments, router]);
 }
 
+/**
+ * Registers the device push token once authenticated and routes notification
+ * taps into the matching screen (chat/pantry/spending/household). Guarded so it
+ * no-ops for guests and when push is unavailable.
+ */
+function usePushNotifications() {
+  const status = useSessionStore((state) => state.status);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status !== "authed") return;
+    void registerPushToken();
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const href = routeForPushResponse(response);
+        if (href) router.push(href);
+      },
+    );
+    return () => subscription.remove();
+  }, [status, router]);
+}
+
 function RootNavigator() {
   useAuthRedirect();
+  usePushNotifications();
   return (
     <Stack
       screenOptions={{
@@ -67,6 +105,7 @@ function RootNavigator() {
       <Stack.Screen name="spending-analytics" options={{ presentation: "card" }} />
       <Stack.Screen name="price-history" options={{ presentation: "card" }} />
       <Stack.Screen name="household" />
+      <Stack.Screen name="chat" options={{ presentation: "card" }} />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="paywall" options={{ presentation: "modal" }} />

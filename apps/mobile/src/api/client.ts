@@ -60,6 +60,15 @@ export class ApiClient {
     return this.parse(response, options.schema);
   }
 
+  /**
+   * Force a single-flight access-token rotation. Used by the realtime socket
+   * client when the server rejects an expired handshake token so it can
+   * reconnect with a fresh one. Throws (and signs out) when refresh fails.
+   */
+  async refresh(): Promise<void> {
+    await this.refreshAccessToken();
+  }
+
   private async send<T extends z.ZodTypeAny>(
     path: string,
     options: RequestOptions<T>,
