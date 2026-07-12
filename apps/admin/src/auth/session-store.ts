@@ -13,7 +13,9 @@ export interface SessionState {
   refreshToken: string | null;
 }
 
-const state: SessionState = {
+// Snapshots are replaced (never mutated in place) so `useSyncExternalStore`
+// detects every change by reference and re-renders subscribers reliably.
+let state: SessionState = {
   user: null,
   accessToken: null,
   refreshToken: null,
@@ -37,24 +39,36 @@ export const sessionStore = {
 
   /** Establish an authenticated session (after a verified admin login). */
   setSession(user: UserResponse, tokens: TokenPair): void {
-    state.user = user;
-    state.accessToken = tokens.accessToken;
-    state.refreshToken = tokens.refreshToken;
+    state = {
+      user,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
     emit();
   },
 
   /** Persist a rotated token pair without disturbing the current user. */
   setTokens(tokens: TokenPair): void {
-    state.accessToken = tokens.accessToken;
-    state.refreshToken = tokens.refreshToken;
+    state = {
+      ...state,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+    emit();
+  },
+
+  /**
+   * Replace the current session user (e.g. after an admin changes their OWN
+   * roles) so role-dependent guards re-evaluate without a full page reload.
+   */
+  setUser(user: UserResponse): void {
+    state = { ...state, user };
     emit();
   },
 
   /** Clear all session material (logout / auth failure). */
   clear(): void {
-    state.user = null;
-    state.accessToken = null;
-    state.refreshToken = null;
+    state = { user: null, accessToken: null, refreshToken: null };
     emit();
   },
 };

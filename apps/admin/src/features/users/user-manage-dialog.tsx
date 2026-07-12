@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AdminUserResponse, Role } from "@kitchenpal/api-contract";
+import type {
+  AdminUserResponse,
+  Role,
+} from "@kitchenpal/api-contract";
 import { adminApi } from "@/api/admin";
 import { ApiClientError } from "@/api/errors";
+import { useSession } from "@/auth/use-session";
+import { sessionStore } from "@/auth/session-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +32,10 @@ interface UserManageDialogProps {
  * Manage a single user: toggle the admin role, suspend/reinstate, and assign or
  * cancel their subscription (source=admin). Subscription assignment is the only
  * path to Pro in v1, so it lives here rather than in a self-serve flow.
+ *
+ * Self-lockout guard: an admin cannot remove their OWN admin role or suspend
+ * their OWN account from here — both would immediately revoke their access. The
+ * controls are disabled for the current user (the backend rejects these too).
  */
 export function UserManageDialog({
   user,
@@ -34,8 +43,11 @@ export function UserManageDialog({
   onChanged,
 }: UserManageDialogProps) {
   const queryClient = useQueryClient();
+  const session = useSession();
   const [planId, setPlanId] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const isSelf = user !== null && session.user?.id === user.id;
 
   const plans = useQuery({
     queryKey: ["subscription-plans"],
@@ -43,7 +55,13 @@ export function UserManageDialog({
     enabled: user !== null,
   });
 
-  // Default the plan picker to the first active plan when plans load.
+  // Reset the plan picker whenever a different user is opened (avoids carrying a
+  // previously-selected plan across users).
+  useEffect(() => {
+    setPlanId("");
+  }, [user?.id]);
+
+  // Default the plan picker to the first plan once plans load.
   useEffect(() => {
     if (!planId && plans.data && plans.data.length > 0) {
       setPlanId(plans.data[0]!.id);
@@ -71,7 +89,14 @@ export function UserManageDialog({
       const roles: Role[] = nextIsAdmin ? ["user", "admin"] : ["user"];
       return adminApi.updateUserRoles(user!.id, roles);
     },
-    onSuccess: afterChange,
+    onSuccess: (updated) => {
+      // If an admin changed their own roles, refresh the session user so
+      // role-dependent guards (RequireAdmin) re-evaluate without a reload.
+      if (isSelf && session.user) {
+        sessionStore.setUser({ ...session.user, roles: updated.roles });
+      }
+      afterChange();
+    },
     onError,
   });
 
@@ -82,8 +107,7 @@ export function UserManageDialog({
   });
 
   const assignMutation = useMutation({
-    mutationFn: () =>
-      adminApi.assignSubscription({ userId: user!.id, planId }),
+    mutationFn: () => adminApi.assignSubscription({ userId: user!.id, planId }),
     onSuccess: afterChange,
     onError,
   });
@@ -93,6 +117,37 @@ export function UserManageDialog({
     onSuccess: afterChange,
     onError,
   });
+
+  function handleSuspendClick() {
+    if (!user) return;
+    const suspending = !user.suspended;
+    // Suspending revokes all of the target's sessions server-side — confirm
+    // first, matching the confirm pattern used for other destructive actions.
+    if (
+      suspending &&
+      !window.confirm(
+        `Suspend ${user.displayName}? This signs them out of every session and blocks sign-in.`,
+      )
+    ) {
+      return;
+    }
+    suspendMutation.mutate(suspending);
+  }
+
+  function handleRoleToggle(nextIsAdmin: boolean) {
+    // Removing your OWN admin role locks you out of the console immediately —
+    // require an explicit confirmation before attempting it.
+    const removingOwnAdmin = isSelf && !nextIsAdmin;
+    if (
+      removingOwnAdmin &&
+      !window.confirm(
+        "Remove your OWN admin access? You will be locked out of this console immediately.",
+      )
+    ) {
+      return;
+    }
+    roleMutation.mutate(nextIsAdmin);
+  }
 
   return (
     <Dialog open={user !== null} onOpenChange={(open) => !open && onClose()}>
@@ -107,14 +162,16 @@ export function UserManageDialog({
             <section className="flex items-center justify-between border-t border-border pt-4">
               <div>
                 <Label>Administrator</Label>
-                <p className="text-xs text-text-muted">
-                  Grants access to this console.
+                <p className={isSelf ? "text-xs text-danger" : "text-xs text-text-muted"}>
+                  {isSelf
+                    ? "This is your account — removing admin access will lock you out (you'll be asked to confirm)."
+                    : "Grants access to this console."}
                 </p>
               </div>
               <Switch
                 checked={isAdmin}
                 disabled={roleMutation.isPending}
-                onCheckedChange={(next) => roleMutation.mutate(next)}
+                onCheckedChange={handleRoleToggle}
                 aria-label="Toggle administrator role"
               />
             </section>
@@ -122,8 +179,10 @@ export function UserManageDialog({
             <section className="flex items-center justify-between border-t border-border pt-4">
               <div>
                 <Label>Account status</Label>
-                <p className="text-xs text-text-muted">
-                  Suspended users cannot sign in.
+                <p className={isSelf ? "text-xs text-danger" : "text-xs text-text-muted"}>
+                  {isSelf
+                    ? "You can't suspend your own account — it would lock you out."
+                    : "Suspended users cannot sign in."}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -135,8 +194,8 @@ export function UserManageDialog({
                 <Button
                   variant={user.suspended ? "outline" : "danger"}
                   size="sm"
-                  disabled={suspendMutation.isPending}
-                  onClick={() => suspendMutation.mutate(!user.suspended)}
+                  disabled={suspendMutation.isPending || isSelf}
+                  onClick={handleSuspendClick}
                 >
                   {user.suspended ? "Reinstate" : "Suspend"}
                 </Button>
