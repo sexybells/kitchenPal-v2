@@ -10,7 +10,8 @@
     "backgroundColor": "#FFF9F3",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kitchenpal.app"
+      "bundleIdentifier": "com.kitchenpal.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.kitchenpal.app",
@@ -26,6 +27,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-localization",
+      "expo-apple-authentication",
       [
         "expo-local-authentication",
         {

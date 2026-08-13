@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Screen, Text, Button, Input } from "../../src/ui";
 import { SocialAuthButtons } from "../../src/features/auth/SocialAuthButtons";
+import { useAppleAuth } from "../../src/features/auth/apple-auth";
 import { theme } from "../../src/theme";
 import { useLogin } from "../../src/api/hooks";
 import { resolveErrorMessage } from "../../src/lib/error-message";
@@ -15,6 +16,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const login = useLogin();
+  const apple = useAppleAuth();
   const hydrate = useSessionStore((state) => state.hydrate);
 
   const [email, setEmail] = useState("");
@@ -40,7 +42,7 @@ export default function LoginScreen() {
     if (ok) await hydrate();
   };
 
-  const errorMessage = resolveErrorMessage(login.error, t);
+  const errorMessage = resolveErrorMessage(login.error, t) ?? apple.error;
 
   return (
     <Screen>
@@ -98,9 +100,10 @@ export default function LoginScreen() {
       </View>
 
       <SocialAuthButtons
+        onApple={apple.signIn}
         showBiometric={biometricReady}
         onBiometric={onBiometric}
-        disabled={login.isPending}
+        disabled={login.isPending || apple.isPending}
       />
 
       <View style={styles.footer}>

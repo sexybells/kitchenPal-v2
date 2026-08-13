@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Screen, Text, Button, Input } from "../../src/ui";
 import { SocialAuthButtons } from "../../src/features/auth/SocialAuthButtons";
+import { useAppleAuth } from "../../src/features/auth/apple-auth";
 import { theme } from "../../src/theme";
 import { useRegister } from "../../src/api/hooks";
 import { resolveErrorMessage } from "../../src/lib/error-message";
@@ -14,6 +15,7 @@ export default function SignUpScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const register = useRegister();
+  const apple = useAppleAuth();
   const locale = useUiStore((state) => state.locale);
 
   const [displayName, setDisplayName] = useState("");
@@ -29,7 +31,7 @@ export default function SignUpScreen() {
     });
   };
 
-  const errorMessage = resolveErrorMessage(register.error, t);
+  const errorMessage = resolveErrorMessage(register.error, t) ?? apple.error;
 
   return (
     <Screen>
@@ -88,7 +90,10 @@ export default function SignUpScreen() {
         />
       </View>
 
-      <SocialAuthButtons disabled={register.isPending} />
+      <SocialAuthButtons
+        onApple={apple.signIn}
+        disabled={register.isPending || apple.isPending}
+      />
 
       <View style={styles.footer}>
         <Text variant="body-m" color="text-muted">
