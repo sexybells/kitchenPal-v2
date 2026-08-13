@@ -14,6 +14,7 @@ export * from "./shopping.js";
 export * from "./spending.js";
 export * from "./household.js";
 export * from "./chat.js";
+export * from "./community.js";
 export * from "./notification.js";
 export * from "./subscription.js";
 export * from "./admin.js";

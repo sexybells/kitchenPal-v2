@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   Screen,
+  ScreenHeader,
   Text,
   Card,
   Button,
@@ -134,17 +135,17 @@ export default function ShoppingScreen() {
         ) : null
       }
     >
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("tabs.shopping")}
-        </Text>
-        {hasList && summary.total > 0 ? (
-          <Badge
-            label={t("shopping.itemCount", { count: summary.total })}
-            tone="neutral"
-          />
-        ) : null}
-      </View>
+      <ScreenHeader
+        title={t("tabs.shopping")}
+        right={
+          hasList && summary.total > 0 ? (
+            <Badge
+              label={t("shopping.itemCount", { count: summary.total })}
+              tone="neutral"
+            />
+          ) : null
+        }
+      />
 
       {hasList ? (
         <>
@@ -268,13 +269,6 @@ export default function ShoppingScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: theme.spacing[8],
-    marginBottom: theme.spacing[16],
-  },
   body: { flex: 1, minHeight: 320, gap: theme.spacing[16], justifyContent: "center" },
   addCard: { gap: theme.spacing[12], marginBottom: theme.spacing[20] },
   addMetaRow: { flexDirection: "row", gap: theme.spacing[12] },

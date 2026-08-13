@@ -13,6 +13,7 @@ import { AppThrottlerModule } from "./common/throttler/throttler.module";
 import { AppConfigModule } from "./config/config.module";
 import { AdminModule } from "./modules/admin/admin.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { CommunityModule } from "./modules/community/community.module";
 import { JwtAuthGuard } from "./modules/auth/guards/jwt-auth.guard";
 import { HealthModule } from "./modules/health/health.module";
 import { HouseholdModule } from "./modules/household/household.module";
@@ -45,6 +46,7 @@ import { UsersModule } from "./modules/users/users.module";
     UploadsModule,
     PantryModule,
     RecipesModule,
+    CommunityModule,
     HouseholdModule,
     ShoppingModule,
     SubscriptionsModule,

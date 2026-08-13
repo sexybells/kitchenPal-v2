@@ -3,9 +3,9 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   Screen,
+  ScreenHeader,
   Text,
   Card,
-  Button,
   LoadingState,
   ErrorState,
   EmptyState,
@@ -29,14 +29,10 @@ export default function PriceHistoryScreen() {
 
   return (
     <Screen testID="price-history-screen">
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("spending.priceHistory")}
-        </Text>
-        <Text variant="body-m" color="text-muted">
-          {t("spending.priceHistorySubtitle")}
-        </Text>
-      </View>
+      <ScreenHeader title={t("spending.priceHistory")} onBack={() => router.back()} />
+      <Text variant="body-m" color="text-muted" style={styles.subtitle}>
+        {t("spending.priceHistorySubtitle")}
+      </Text>
 
       {history.isLoading ? (
         <LoadingState label={t("common.loading")} />
@@ -80,14 +76,12 @@ export default function PriceHistoryScreen() {
           ))}
         </Card>
       )}
-
-      <Button label={t("common.back")} variant="ghost" onPress={() => router.back()} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: theme.spacing[8], gap: theme.spacing[4], marginBottom: theme.spacing[16] },
+  subtitle: { marginBottom: theme.spacing[16] },
   row: {
     flexDirection: "row",
     alignItems: "center",

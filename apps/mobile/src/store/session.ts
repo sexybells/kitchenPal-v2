@@ -43,14 +43,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   refreshToken: null,
 
   hydrate: async () => {
-    const tokens = await readStoredTokens();
-    if (tokens) {
-      set({
-        status: "authed",
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      });
-    } else {
+    try {
+      const tokens = await readStoredTokens();
+      if (tokens) {
+        set({
+          status: "authed",
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        });
+      } else {
+        set({ status: "guest", accessToken: null, refreshToken: null });
+      }
+    } catch {
+      // A keychain/keystore read can reject (e.g. device still locked during an
+      // iOS prewarmed launch). Fall back to guest so boot never hangs on the
+      // splash screen with `status` stuck at "loading".
       set({ status: "guest", accessToken: null, refreshToken: null });
     }
   },

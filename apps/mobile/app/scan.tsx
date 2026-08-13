@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Screen, Text, Button, Icon, LoadingState } from "../src/ui";
@@ -44,6 +44,18 @@ export default function ScanScreen() {
 
   return (
     <Screen>
+      <View style={styles.closeRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          onPress={() => router.back()}
+          hitSlop={8}
+          testID="scan-close"
+        >
+          <Icon name="close" size={24} color="text-muted" />
+        </Pressable>
+      </View>
+
       <View style={styles.header}>
         <View style={styles.iconCircle}>
           <Icon name="scan" size={32} color="primary" />
@@ -101,10 +113,11 @@ export default function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
+  closeRow: { alignItems: "flex-end", paddingTop: theme.spacing[8] },
   header: {
     alignItems: "center",
     gap: theme.spacing[12],
-    paddingTop: theme.spacing[24],
+    paddingTop: theme.spacing[16],
   },
   iconCircle: {
     width: 72,

@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { Screen, Text, Card, Button, Input, Badge } from "../src/ui";
+import { Screen, ScreenHeader, Text, Card, Button, Input, Badge } from "../src/ui";
 import { theme } from "../src/theme";
 import { formatVnd, formatVndDigits, parseVndInput } from "../src/lib/currency";
 import {
@@ -55,11 +55,7 @@ export default function BudgetScreen() {
 
   return (
     <Screen testID="budget-screen">
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("spending.budget")}
-        </Text>
-      </View>
+      <ScreenHeader title={t("spending.budget")} onBack={() => router.back()} />
 
       {budgetData ? (
         <Card testID="budget-current">
@@ -127,8 +123,6 @@ export default function BudgetScreen() {
           </Text>
         ) : null}
       </Card>
-
-      <Button label={t("common.back")} variant="ghost" onPress={() => router.back()} />
     </Screen>
   );
 }
@@ -155,7 +149,6 @@ function Stat({
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: theme.spacing[8], marginBottom: theme.spacing[16] },
   currentHead: {
     flexDirection: "row",
     alignItems: "center",

@@ -5,6 +5,7 @@ import { Button } from "../Button";
 import { Input } from "../Input";
 import { Card } from "../Card";
 import { Fab } from "../Fab";
+import { ScreenHeader } from "../ScreenHeader";
 
 describe("Button", () => {
   it("renders its label and fires onPress", async () => {
@@ -79,5 +80,35 @@ describe("Fab", () => {
     expect(fab.props.accessibilityLabel).toBe("Add item");
     fireEvent.press(fab);
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ScreenHeader", () => {
+  it("renders the title", async () => {
+    await renderWithProviders(<ScreenHeader title="Pantry" />);
+    expect(screen.getByText("Pantry")).toBeTruthy();
+  });
+
+  it("renders the optional right slot alongside the title", async () => {
+    await renderWithProviders(
+      <ScreenHeader title="Community" right={<RNText>Action</RNText>} />,
+    );
+    expect(screen.getByText("Community")).toBeTruthy();
+    expect(screen.getByText("Action")).toBeTruthy();
+  });
+
+  it("shows a labelled back affordance that fires onBack when provided", async () => {
+    const onBack = jest.fn();
+    await renderWithProviders(<ScreenHeader title="Recipe" onBack={onBack} />);
+
+    const back = screen.getByTestId("screen-header-back");
+    expect(back.props.accessibilityLabel).toBe("Back");
+    fireEvent.press(back);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the back affordance when onBack is not provided", async () => {
+    await renderWithProviders(<ScreenHeader title="Pantry" />);
+    expect(screen.queryByTestId("screen-header-back")).toBeNull();
   });
 });

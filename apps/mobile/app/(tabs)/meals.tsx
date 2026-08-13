@@ -2,7 +2,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Screen, Text } from "../../src/ui";
+import { Screen, ScreenHeader } from "../../src/ui";
 import { theme } from "../../src/theme";
 import { Segmented } from "../../src/features/pantry/Segmented";
 import { MealPlanner } from "../../src/features/recipes/MealPlanner";
@@ -24,11 +24,7 @@ export default function MealsScreen() {
 
   return (
     <Screen testID="meals-screen">
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("tabs.meals")}
-        </Text>
-      </View>
+      <ScreenHeader title={t("tabs.meals")} />
 
       <View style={styles.segmented}>
         <Segmented<MealsTab>
@@ -55,6 +51,5 @@ export default function MealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: theme.spacing[8] },
-  segmented: { marginVertical: theme.spacing[16] },
+  segmented: { marginBottom: theme.spacing[16] },
 });

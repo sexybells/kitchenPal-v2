@@ -28,13 +28,20 @@ export const useUiStore = create<UiState>((set) => ({
   hydrated: false,
 
   hydrate: async () => {
-    const prefs = await readPreferences();
-    set({
-      locale: prefs.locale ?? DEFAULT_LOCALE,
-      hasCompletedOnboarding: prefs.hasCompletedOnboarding,
-      hydrated: true,
-    });
-    return prefs.locale;
+    try {
+      const prefs = await readPreferences();
+      set({
+        locale: prefs.locale ?? DEFAULT_LOCALE,
+        hasCompletedOnboarding: prefs.hasCompletedOnboarding,
+        hydrated: true,
+      });
+      return prefs.locale;
+    } catch {
+      // Storage read rejected — boot with defaults instead of leaving
+      // `hydrated` false forever (which would block the splash screen).
+      set({ hydrated: true });
+      return null;
+    }
   },
 
   setLocale: (locale) => {

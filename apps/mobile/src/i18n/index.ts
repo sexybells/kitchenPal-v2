@@ -29,8 +29,13 @@ export const resolveDeviceLocale = (): Locale => {
   return DEFAULT_LOCALE;
 };
 
-/** Initialise i18next once, with the given (already-resolved) locale. */
-export const initI18n = (locale: Locale = resolveDeviceLocale()): typeof i18n => {
+/**
+ * Initialise i18next once. Defaults to the Vietnamese-first `DEFAULT_LOCALE`
+ * (NOT the device locale) so first-run stays consistent with the UI store's
+ * default and the Language Gate's pre-selection; a persisted locale is applied
+ * during boot hydration. Pass an explicit locale to override (e.g. in tests).
+ */
+export const initI18n = (locale: Locale = DEFAULT_LOCALE): typeof i18n => {
   if (!i18n.isInitialized) {
     void i18n.use(initReactI18next).init({
       resources,

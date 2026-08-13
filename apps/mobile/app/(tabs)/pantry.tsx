@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   Screen,
+  ScreenHeader,
   Text,
   Input,
   Chip,
@@ -114,20 +115,20 @@ export default function PantryScreen() {
 
   return (
     <Screen scroll={false}>
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("pantry.title")}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("pantry.addItem")}
-          onPress={() => router.push("/pantry-item")}
-          style={styles.addButton}
-          testID="pantry-add"
-        >
-          <Icon name="plus" size={22} color="text-inverse" />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title={t("pantry.title")}
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("pantry.addItem")}
+            onPress={() => router.push("/pantry-item")}
+            style={styles.addButton}
+            testID="pantry-add"
+          >
+            <Icon name="plus" size={22} color="text-inverse" />
+          </Pressable>
+        }
+      />
 
       <Input
         placeholder={t("pantry.searchPlaceholder")}
@@ -187,13 +188,6 @@ export default function PantryScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: theme.spacing[8],
-    marginBottom: theme.spacing[16],
-  },
   addButton: {
     width: 40,
     height: 40,

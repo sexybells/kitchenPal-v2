@@ -41,7 +41,9 @@ export type IconName =
   | "users"
   | "link"
   | "sparkles"
-  | "camera";
+  | "camera"
+  | "community"
+  | "more";
 
 // Each entry is the inner markup of a 0 0 24 24 viewBox, stroked (fill: none)
 // unless a glyph needs a solid fill (brand marks).
@@ -168,6 +170,21 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <Path d="M4 8h3l1.5-2h7L17 8h3v11H4zM4 8V19" />
       <Circle cx={12} cy={13} r={3.5} />
+    </>
+  ),
+  more: (
+    <>
+      <Circle cx={5} cy={12} r={1.4} />
+      <Circle cx={12} cy={12} r={1.4} />
+      <Circle cx={19} cy={12} r={1.4} />
+    </>
+  ),
+  community: (
+    <>
+      <Circle cx={12} cy={7} r={3} />
+      <Circle cx={5.5} cy={10} r={2.2} />
+      <Circle cx={18.5} cy={10} r={2.2} />
+      <Path d="M6 20c0-3 2.7-5 6-5s6 2 6 5M2.5 19c0-1.8 1.3-3.2 3-3.5M21.5 19c0-1.8-1.3-3.2-3-3.5" />
     </>
   ),
   // Brand marks are filled glyphs, drawn from the icon color.

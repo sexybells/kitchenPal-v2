@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "../auth/auth.module";
 import { User, UserSchema } from "../auth/schemas/user.schema";
+import { CommunityModule } from "../community/community.module";
 import {
   Household,
   HouseholdSchema,
@@ -23,6 +24,7 @@ import {
   PantryScan,
   PantryScanSchema,
 } from "../pantry/schemas/pantry-scan.schema";
+import { RecipesModule } from "../recipes/recipes.module";
 import { Recipe, RecipeSchema } from "../recipes/schemas/recipe.schema";
 import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
 import {
@@ -30,6 +32,7 @@ import {
   UserSubscriptionSchema,
 } from "../subscriptions/schemas/user-subscription.schema";
 import { Upload, UploadSchema } from "../uploads/schemas/upload.schema";
+import { AdminCommunityController } from "./controllers/admin-community.controller";
 import { AdminContentController } from "./controllers/admin-content.controller";
 import { AdminDevController } from "./controllers/admin-dev.controller";
 import { AdminLogsController } from "./controllers/admin-logs.controller";
@@ -54,6 +57,7 @@ import {
   SystemSettingSchema,
 } from "./schemas/system-setting.schema";
 import { AdminAuditService } from "./services/admin-audit.service";
+import { AdminCommunityService } from "./services/admin-community.service";
 import { AdminContentService } from "./services/admin-content.service";
 import { AdminLogsService } from "./services/admin-logs.service";
 import { AdminReportsService } from "./services/admin-reports.service";
@@ -73,6 +77,10 @@ import { DevToolsService } from "./services/dev-tools.service";
   imports: [
     AuthModule,
     SubscriptionsModule,
+    CommunityModule,
+    // Dev tools reuse the shared system-recipe seeder rather than owning a
+    // second copy of the seeding logic.
+    RecipesModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Household.name, schema: HouseholdSchema },
@@ -90,6 +98,7 @@ import { DevToolsService } from "./services/dev-tools.service";
   controllers: [
     AdminUsersController,
     AdminContentController,
+    AdminCommunityController,
     AdminLogsController,
     AdminReportsController,
     AdminSettingsController,
@@ -110,6 +119,7 @@ import { DevToolsService } from "./services/dev-tools.service";
     AdminAuditService,
     AdminUsersService,
     AdminContentService,
+    AdminCommunityService,
     AdminLogsService,
     AdminReportsService,
     AdminSettingsService,

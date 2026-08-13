@@ -3,6 +3,7 @@ import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   Screen,
+  ScreenHeader,
   Text,
   Card,
   Button,
@@ -63,6 +64,7 @@ export default function SpendingScreen() {
   if (budget.isLoading && summary.isLoading) {
     return (
       <Screen>
+        <ScreenHeader title={t("menu.spending")} onBack={() => router.back()} />
         <LoadingState label={t("common.loading")} />
       </Screen>
     );
@@ -72,6 +74,7 @@ export default function SpendingScreen() {
   if (budget.isError && !isNoBudgetError(budget.error)) {
     return (
       <Screen>
+        <ScreenHeader title={t("menu.spending")} onBack={() => router.back()} />
         <ErrorState
           title={t("states.errorTitle")}
           body={resolveErrorMessage(budget.error, t) ?? t("states.errorBody")}
@@ -85,11 +88,7 @@ export default function SpendingScreen() {
 
   return (
     <Screen testID="spending-screen">
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("menu.spending")}
-        </Text>
-      </View>
+      <ScreenHeader title={t("menu.spending")} onBack={() => router.back()} />
 
       <Card testID="spending-budget-card">
         {budgetData ? (
@@ -249,7 +248,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: theme.spacing[8], marginBottom: theme.spacing[16] },
   budgetHead: {
     flexDirection: "row",
     alignItems: "center",

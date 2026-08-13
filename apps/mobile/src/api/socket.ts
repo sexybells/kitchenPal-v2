@@ -1,7 +1,10 @@
 import { io, type Socket } from "socket.io-client";
-import type {
-  MessageResponse,
-  NotificationResponse,
+import { z } from "zod";
+import {
+  messageResponseSchema,
+  notificationResponseSchema,
+  type MessageResponse,
+  type NotificationResponse,
 } from "@kitchenpal/api-contract";
 
 /**
@@ -27,6 +30,26 @@ export interface ServerEvents {
    */
   typing: (payload: { householdId: string; userId: string }) => void;
 }
+
+/**
+ * Zod schemas for every server->client payload. The socket boundary mirrors
+ * the REST client's response validation: a frame that does not match its
+ * contract (e.g. from a version-skewed server) is dropped before it can throw
+ * inside listeners or message reducers.
+ */
+const serverEventSchemas = {
+  message: messageResponseSchema,
+  voteUpdated: messageResponseSchema,
+  messagesRead: z.object({
+    householdId: z.string(),
+    userId: z.string(),
+    messageIds: z.array(z.string()),
+  }),
+  notification: notificationResponseSchema,
+  joinRejected: z.object({ householdId: z.string() }),
+  unauthorized: z.object({ message: z.string() }),
+  typing: z.object({ householdId: z.string(), userId: z.string() }),
+} satisfies Record<keyof ServerEvents, z.ZodTypeAny>;
 
 /** Acknowledgement the gateway returns to the emitting client for every event. */
 export interface SocketAck {
@@ -125,8 +148,10 @@ export class ChatSocket {
       if (this.householdId) this.emitJoin(this.householdId);
     });
     // An expired/invalid handshake token: refresh once and reconnect with it.
-    socket.on("unauthorized", (payload: { message: string }) => {
-      this.dispatch("unauthorized", payload);
+    // The refresh must run even when the payload is malformed, so it is not
+    // gated on validation.
+    socket.on("unauthorized", (payload: unknown) => {
+      this.dispatchValidated("unauthorized", payload);
       void this.refreshAndReconnect();
     });
 
@@ -139,9 +164,25 @@ export class ChatSocket {
       "typing",
     ] as const) {
       socket.on(event, (payload: unknown) =>
-        this.dispatch(event, payload as never),
+        this.dispatchValidated(event, payload),
       );
     }
+  }
+
+  /** Validate a server payload against its contract, then fan out. Drops
+   * malformed frames so they never reach listeners. */
+  private dispatchValidated<E extends keyof ServerEvents>(
+    event: E,
+    payload: unknown,
+  ): void {
+    const parsed = serverEventSchemas[event].safeParse(payload);
+    if (!parsed.success) {
+      if (__DEV__) {
+        console.warn(`[chat-socket] dropped malformed "${event}" payload`);
+      }
+      return;
+    }
+    this.dispatch(event, parsed.data as Parameters<ServerEvents[E]>[0]);
   }
 
   /** Set (and switch to) the active household room. */

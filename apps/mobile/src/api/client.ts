@@ -1,8 +1,10 @@
 import type { z } from "zod";
 import {
   errorEnvelopeSchema,
+  paginatedEnvelope,
   successEnvelope,
   tokenPairSchema,
+  type PageInfo,
   type TokenPair,
 } from "@kitchenpal/api-contract";
 import { ApiClientError } from "./errors";
@@ -58,6 +60,40 @@ export class ApiClient {
   ): Promise<Result<T>> {
     const response = await this.send(path, options, false);
     return this.parse(response, options.schema);
+  }
+
+  /**
+   * Cursor-paginated GET: validates the `paginatedEnvelope` shape and returns
+   * both the page `items` and the `page` cursor info so infinite queries can
+   * page forward. `item` is the schema for a single row.
+   */
+  async requestPage<T extends z.ZodTypeAny>(
+    path: string,
+    item: T,
+    options: RequestOptions<z.ZodTypeAny> = {},
+  ): Promise<{ items: z.infer<T>[]; page: PageInfo }> {
+    const response = await this.send(path, options, false);
+    const payload: unknown = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const parsed = errorEnvelopeSchema.safeParse(payload);
+      if (parsed.success) {
+        throw ApiClientError.fromEnvelope(parsed.data.error, response.status);
+      }
+      throw new ApiClientError({
+        code: "HTTP_ERROR",
+        message: `Request failed with status ${response.status}`,
+        status: response.status,
+      });
+    }
+
+    const validated = paginatedEnvelope(item).safeParse(payload);
+    if (!validated.success) {
+      throw ApiClientError.invalidResponse(
+        "Response did not match the expected shape",
+      );
+    }
+    return { items: validated.data.data, page: validated.data.meta.page };
   }
 
   /**

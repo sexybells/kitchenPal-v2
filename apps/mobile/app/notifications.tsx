@@ -7,6 +7,7 @@ import {
   ErrorState,
   LoadingState,
   Screen,
+  ScreenHeader,
   Text,
 } from "../src/ui";
 import { theme } from "../src/theme";
@@ -59,21 +60,22 @@ export default function NotificationsScreen() {
 
   return (
     <Screen testID="notifications-screen">
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("menu.notifications")}
-        </Text>
-        {unread > 0 ? (
-          <Button
-            label={t("notifications.markAllRead")}
-            variant="ghost"
-            fullWidth={false}
-            onPress={markAllRead}
-            loading={markAll.isPending}
-            testID="notifications-mark-all"
-          />
-        ) : null}
-      </View>
+      <ScreenHeader
+        title={t("menu.notifications")}
+        onBack={() => router.back()}
+        right={
+          unread > 0 ? (
+            <Button
+              label={t("notifications.markAllRead")}
+              variant="ghost"
+              fullWidth={false}
+              onPress={markAllRead}
+              loading={markAll.isPending}
+              testID="notifications-mark-all"
+            />
+          ) : undefined
+        }
+      />
 
       {notifications.isLoading ? (
         <LoadingState label={t("common.loading")} />
@@ -114,14 +116,6 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: theme.spacing[8],
-    marginBottom: theme.spacing[16],
-    minHeight: 40,
-  },
   section: { marginTop: theme.spacing[16], gap: theme.spacing[4] },
   sectionTitle: {
     textTransform: "uppercase",

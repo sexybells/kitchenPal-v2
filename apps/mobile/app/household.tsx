@@ -9,6 +9,7 @@ import {
   LoadingState,
   ErrorState,
   Screen,
+  ScreenHeader,
   Text,
 } from "../src/ui";
 import { theme } from "../src/theme";
@@ -57,7 +58,7 @@ export default function HouseholdScreen() {
   if (households.isLoading) {
     return (
       <Screen testID="household-screen">
-        <Header title={t("menu.household")} />
+        <Header />
         <LoadingState label={t("common.loading")} />
       </Screen>
     );
@@ -66,7 +67,7 @@ export default function HouseholdScreen() {
   if (households.isError) {
     return (
       <Screen testID="household-screen">
-        <Header title={t("menu.household")} />
+        <Header />
         <ErrorState
           title={t("states.errorTitle")}
           body={resolveErrorMessage(households.error, t) ?? t("states.errorBody")}
@@ -81,7 +82,7 @@ export default function HouseholdScreen() {
   if (!household || !householdId) {
     return (
       <Screen testID="household-screen">
-        <Header title={t("menu.household")} />
+        <Header />
         <HouseholdSetup testID="household-setup" />
       </Screen>
     );
@@ -105,7 +106,7 @@ export default function HouseholdScreen() {
 
   return (
     <Screen testID="household-screen">
-      <Header title={t("menu.household")} />
+      <Header />
 
       <Card testID="household-card" style={styles.headerCard}>
         <View style={styles.householdRow}>
@@ -184,14 +185,12 @@ export default function HouseholdScreen() {
   );
 }
 
-function Header({ title }: { title: string }) {
-  return (
-    <View style={styles.header}>
-      <Text variant="heading-l" color="text">
-        {title}
-      </Text>
-    </View>
-  );
+// The household hub renders in several branches (loading/error/setup/hub); this
+// shared header keeps the title + back affordance identical across all of them.
+function Header() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  return <ScreenHeader title={t("menu.household")} onBack={() => router.back()} />;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -206,7 +205,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: theme.spacing[8], marginBottom: theme.spacing[16] },
   headerCard: { gap: theme.spacing[16] },
   householdRow: {
     flexDirection: "row",

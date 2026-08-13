@@ -9,6 +9,7 @@ import { DashboardPage } from "@/features/dashboard/dashboard-page";
 import { UsersPage } from "@/features/users/users-page";
 import { HouseholdsPage } from "@/features/households/households-page";
 import { RecipesPage } from "@/features/recipes/recipes-page";
+import { CommunityReportsPage } from "@/features/community/community-reports-page";
 import { ScansPage } from "@/features/scans/scans-page";
 import { UploadsPage } from "@/features/uploads/uploads-page";
 import { AiLogsPage } from "@/features/logs/ai-logs-page";
@@ -44,6 +45,7 @@ export function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/households" element={<HouseholdsPage />} />
             <Route path="/recipes" element={<RecipesPage />} />
+            <Route path="/community" element={<CommunityReportsPage />} />
             <Route path="/scans" element={<ScansPage />} />
             <Route path="/uploads" element={<UploadsPage />} />
             <Route path="/subscriptions" element={<SubscriptionsPage />} />

@@ -4,9 +4,9 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   Screen,
+  ScreenHeader,
   Text,
   Card,
-  Button,
   LoadingState,
   ErrorState,
   EmptyState,
@@ -40,11 +40,7 @@ export default function SpendingAnalyticsScreen() {
 
   return (
     <Screen testID="analytics-screen">
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("spending.analytics")}
-        </Text>
-      </View>
+      <ScreenHeader title={t("spending.analytics")} onBack={() => router.back()} />
 
       <Segmented
         options={[
@@ -97,14 +93,11 @@ export default function SpendingAnalyticsScreen() {
           </View>
         </>
       )}
-
-      <Button label={t("common.back")} variant="ghost" onPress={() => router.back()} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: theme.spacing[8], marginBottom: theme.spacing[16] },
   trendCard: { marginTop: theme.spacing[20], gap: theme.spacing[16] },
   trendHead: {
     flexDirection: "row",

@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   adminAiLogResponseSchema,
   adminAuditLogResponseSchema,
+  adminCommunityReportResponseSchema,
   adminExternalSearchLogResponseSchema,
   adminHouseholdResponseSchema,
   adminRecipeResponseSchema,
@@ -17,6 +18,7 @@ import {
   systemSettingsResponseSchema,
   usageReportSchema,
   userSubscriptionResponseSchema,
+  type AdminCommunityReportResponse,
   type AdminHouseholdResponse,
   type AdminRecipeResponse,
   type AdminUserResponse,
@@ -24,6 +26,7 @@ import {
   type CreatePlanInput,
   type CreateRecipeInput,
   type ReportRangeQuery,
+  type UpdateRecipeInput,
   type SubscriptionPlanResponse,
   type SystemSettingResponse,
   type UpdatePlanInput,
@@ -92,6 +95,22 @@ export const adminApi = {
       body,
       schema: adminRecipeResponseSchema,
     }),
+  updateRecipe: (id: string, body: UpdateRecipeInput) =>
+    api.request(`admin/recipes/${id}`, {
+      method: "PATCH",
+      body,
+      schema: adminRecipeResponseSchema,
+    }),
+  /** Uploads a dish photo and returns its public URL (then PATCH the recipe). */
+  uploadRecipeImage: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.request("uploads/recipe-image", {
+      method: "POST",
+      body: form,
+      schema: z.object({ url: z.string() }),
+    });
+  },
   setRecipePublished: (id: string, published: boolean) =>
     api.request(`admin/recipes/${id}/publish`, {
       method: "PATCH",
@@ -100,6 +119,22 @@ export const adminApi = {
     }),
   deleteRecipe: (id: string): Promise<unknown> =>
     api.request(`admin/recipes/${id}`, { method: "DELETE" }),
+
+  // --- Community moderation ---------------------------------------------
+  listCommunityReports: (
+    params: AdminListParams,
+  ): Promise<Page<AdminCommunityReportResponse>> =>
+    api.requestPage(
+      "admin/community/reports",
+      adminCommunityReportResponseSchema,
+      { query: listQuery(params) },
+    ),
+  removeCommunityPost: (id: string): Promise<unknown> =>
+    api.request(`admin/community/posts/${id}/remove`, { method: "POST" }),
+  removeCommunityComment: (id: string): Promise<unknown> =>
+    api.request(`admin/community/comments/${id}/remove`, { method: "POST" }),
+  dismissCommunityReport: (id: string): Promise<unknown> =>
+    api.request(`admin/community/reports/${id}/dismiss`, { method: "POST" }),
 
   // --- Pantry-scan audit -----------------------------------------------
   listScans: (params: AdminListParams) =>

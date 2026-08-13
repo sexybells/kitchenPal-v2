@@ -117,9 +117,20 @@ export default function CookScreen() {
       }
     >
       <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("cook.title")}
-        </Text>
+        <View style={styles.headerRow}>
+          <Text variant="heading-l" color="text">
+            {t("cook.title")}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("common.close")}
+            onPress={() => router.back()}
+            hitSlop={8}
+            testID="cook-close"
+          >
+            <Icon name="close" size={24} color="text-muted" />
+          </Pressable>
+        </View>
         <Text variant="body-m" color="text-muted">
           {t("cook.subtitle")}
         </Text>
@@ -254,6 +265,11 @@ function Section({
 
 const styles = StyleSheet.create({
   header: { gap: theme.spacing[4], paddingTop: theme.spacing[8] },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   list: { marginTop: theme.spacing[20], gap: theme.spacing[12] },
   itemBlock: { gap: theme.spacing[8] },
   itemRow: {

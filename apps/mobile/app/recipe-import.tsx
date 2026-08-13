@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Screen, Text, Input, Button, Card } from "../src/ui";
+import { Screen, Text, Input, Button, Card, Icon } from "../src/ui";
 import { theme } from "../src/theme";
 import { Segmented } from "../src/features/pantry/Segmented";
 import {
@@ -118,9 +118,20 @@ export default function RecipeImportScreen() {
         ) : undefined
       }
     >
-      <Text variant="heading-l" color="text" style={styles.title}>
-        {t("meals.importTitle")}
-      </Text>
+      <View style={styles.header}>
+        <Text variant="heading-l" color="text">
+          {t("meals.importTitle")}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          onPress={() => router.back()}
+          hitSlop={8}
+          testID="import-close"
+        >
+          <Icon name="close" size={24} color="text-muted" />
+        </Pressable>
+      </View>
 
       <Segmented
         options={[
@@ -191,7 +202,13 @@ export default function RecipeImportScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { paddingTop: theme.spacing[8], marginBottom: theme.spacing[16] },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: theme.spacing[8],
+    marginBottom: theme.spacing[16],
+  },
   urlBlock: { gap: theme.spacing[12], marginTop: theme.spacing[16] },
   warnings: { gap: theme.spacing[4], marginTop: theme.spacing[12] },
   formBlock: { marginTop: theme.spacing[20] },

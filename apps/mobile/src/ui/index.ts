@@ -1,5 +1,6 @@
 /** Public surface of the component library — screens import from here. */
 export { Screen } from "./Screen";
+export { ScreenHeader } from "./ScreenHeader";
 export { Text } from "./Text";
 export { Button } from "./Button";
 export { Input } from "./Input";
@@ -10,7 +11,7 @@ export { Toggle } from "./Toggle";
 export { Avatar } from "./Avatar";
 export { ListRow } from "./ListRow";
 export { Fab } from "./Fab";
-export { BottomNav } from "./BottomNav";
+export { BottomNav, useBottomNavTriggers } from "./BottomNav";
 export { LoadingState, EmptyState, ErrorState } from "./StateViews";
 export { PlaceholderScreen } from "./PlaceholderScreen";
 export { Icon } from "./icons/Icon";

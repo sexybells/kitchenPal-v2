@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   Screen,
+  ScreenHeader,
   Text,
   Button,
   Icon,
@@ -61,6 +62,7 @@ export default function ScanReviewScreen() {
   if (!scanId) {
     return (
       <Screen>
+        <ScreenHeader title={t("scan.reviewTitle")} onBack={() => router.back()} />
         <ErrorState title={t("scan.failedTitle")} body={t("scan.failedBody")} />
       </Screen>
     );
@@ -69,6 +71,7 @@ export default function ScanReviewScreen() {
   if (scan.isLoading || scan.data?.status === "pending") {
     return (
       <Screen>
+        <ScreenHeader title={t("scan.reviewTitle")} onBack={() => router.back()} />
         <LoadingState label={t("scan.analyzing")} testID="scan-analyzing" />
       </Screen>
     );
@@ -77,6 +80,7 @@ export default function ScanReviewScreen() {
   if (scan.isError || scan.data?.status === "failed") {
     return (
       <Screen>
+        <ScreenHeader title={t("scan.reviewTitle")} onBack={() => router.back()} />
         <ErrorState
           title={t("scan.failedTitle")}
           body={resolveErrorMessage(scan.error, t) ?? t("scan.failedBody")}
@@ -110,14 +114,10 @@ export default function ScanReviewScreen() {
         </View>
       }
     >
-      <View style={styles.header}>
-        <Text variant="heading-l" color="text">
-          {t("scan.reviewTitle")}
-        </Text>
-        <Text variant="body-m" color="text-muted">
-          {t("scan.reviewSubtitle")}
-        </Text>
-      </View>
+      <ScreenHeader title={t("scan.reviewTitle")} onBack={() => router.back()} />
+      <Text variant="body-m" color="text-muted">
+        {t("scan.reviewSubtitle")}
+      </Text>
 
       {degraded ? (
         <View style={styles.degradeBanner} testID="scan-degraded">
@@ -166,7 +166,6 @@ export default function ScanReviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { gap: theme.spacing[4], paddingTop: theme.spacing[8] },
   degradeBanner: {
     flexDirection: "row",
     gap: theme.spacing[12],

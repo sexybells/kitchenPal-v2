@@ -2,7 +2,7 @@ import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type { Locale } from "@kitchenpal/api-contract";
-import { Screen, Text, Button, Card, ListRow, Badge, Icon } from "../src/ui";
+import { Screen, ScreenHeader, Text, Button, Card, ListRow, Badge, Icon } from "../src/ui";
 import { theme } from "../src/theme";
 import { useUiStore } from "../src/store/ui";
 import { useSessionStore } from "../src/store/session";
@@ -31,19 +31,7 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <View style={styles.top}>
-        <Button
-          label={t("common.back")}
-          variant="ghost"
-          fullWidth={false}
-          icon="chevron-left"
-          onPress={() => router.back()}
-        />
-      </View>
-
-      <Text variant="heading-l" color="text" style={styles.title}>
-        {t("menu.settings")}
-      </Text>
+      <ScreenHeader title={t("menu.settings")} onBack={() => router.back()} />
 
       <Text variant="label-m" color="text-muted" style={styles.sectionLabel}>
         {t("paywall.settingsRow")}
@@ -94,8 +82,6 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  top: { alignItems: "flex-start", paddingTop: theme.spacing[8] },
-  title: { marginTop: theme.spacing[8] },
   sectionLabel: { marginTop: theme.spacing[24], marginBottom: theme.spacing[8] },
   card: { paddingHorizontal: theme.spacing[16] },
   footer: { marginTop: theme.spacing[32] },
