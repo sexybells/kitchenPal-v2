@@ -25,13 +25,18 @@ async function bootstrap(): Promise<void> {
   const config = app.get<AppConfig>(APP_CONFIG);
 
   // Serve locally-stored uploads (dev). Production uses an S3-backed adapter and
-  // its own CDN/bucket URL, so this static mount is only relevant for local disk.
-  const uploadDir = isAbsolute(config.UPLOAD_DIR)
-    ? config.UPLOAD_DIR
-    : resolve(process.cwd(), config.UPLOAD_DIR);
-  app.useStaticAssets(uploadDir, {
-    prefix: config.UPLOAD_PUBLIC_BASE_URL,
-  });
+  // its own CDN/bucket URL, so this static mount is only relevant for local disk
+  // — and must be SKIPPED for s3: UPLOAD_PUBLIC_BASE_URL is then an absolute
+  // object URL, which Express cannot parse as a route prefix and which crashes
+  // the app during bootstrap.
+  if (config.STORAGE_PROVIDER === "local") {
+    const uploadDir = isAbsolute(config.UPLOAD_DIR)
+      ? config.UPLOAD_DIR
+      : resolve(process.cwd(), config.UPLOAD_DIR);
+    app.useStaticAssets(uploadDir, {
+      prefix: config.UPLOAD_PUBLIC_BASE_URL,
+    });
+  }
 
   if (config.SWAGGER_ENABLED) {
     const docConfig = new DocumentBuilder()

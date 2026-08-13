@@ -14,7 +14,10 @@
 #   docker build -f apps/backend/Dockerfile -t kitchenpal-backend .
 #   docker run --rm -p 3001:3001 --env-file apps/backend/.env kitchenpal-backend
 
-FROM node:20-alpine AS base
+# Node 22, not 20: undici@8 (used to pin the recipe-import fetch to a validated
+# IP) calls `markAsUncloneable`, which only exists from Node 22.10 — on node:20
+# the image builds fine and then dies at startup inside recipe-http-client.
+FROM node:22-alpine AS base
 RUN corepack enable
 WORKDIR /app
 
@@ -48,6 +51,12 @@ COPY --from=prod-pruner /app/out/json/ .
 # no production dependency here requires a postinstall/build step.
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=builder --chown=kitchenpal:nodejs /app/apps/backend/dist ./apps/backend/dist
+# The production install only links the workspace packages' package.json files
+# (`turbo prune --docker` puts sources in out/full, manifests in out/json), so
+# the internal packages' compiled output has to come from the builder stage.
+# Without this the app starts and immediately dies on
+# `Cannot find module '@kitchenpal/api-contract/dist/index.cjs'`.
+COPY --from=builder --chown=kitchenpal:nodejs /app/packages/api-contract/dist ./packages/api-contract/dist
 
 USER kitchenpal
 WORKDIR /app/apps/backend

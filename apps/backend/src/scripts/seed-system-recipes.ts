@@ -31,8 +31,13 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  // A failed seed must not look like a success in CI or a deploy pipeline.
-  new Logger("seed-system-recipes").error(error);
-  process.exitCode = 1;
-});
+// Exit explicitly rather than letting the process end on its own: closing the
+// Nest context does not release the Redis/BullMQ handles, so the event loop
+// stays alive and the command hangs forever — which would stall the deploy step
+// that runs it. A failed seed must also not look like a success in CI.
+main()
+  .then(() => process.exit(0))
+  .catch((error: unknown) => {
+    new Logger("seed-system-recipes").error(error);
+    process.exit(1);
+  });
