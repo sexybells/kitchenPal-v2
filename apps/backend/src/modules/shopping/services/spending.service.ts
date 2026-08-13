@@ -17,6 +17,7 @@ import type {
   SpendingSummary,
 } from "@kitchenpal/api-contract";
 import type { ClientSession, Connection, HydratedDocument } from "mongoose";
+import { isDuplicateKeyError } from "../../../common/database/mongo-errors";
 import { ErrorCode } from "../../../common/http/error-codes";
 import { PageResult, paginate } from "../../../common/http/page-result";
 import type { ScopeContext } from "../../../common/scope/scope-context";
@@ -173,24 +174,42 @@ export class SpendingService {
       cycleEnd,
     );
     if (overlap) {
-      throw new ConflictException({
-        code: ErrorCode.CONFLICT,
-        message:
-          "An active budget already covers this period. Wait for the current cycle to end before setting a new one.",
-        details: {
-          cycleStart: overlap.cycleStart.toISOString(),
-          cycleEnd: overlap.cycleEnd.toISOString(),
-        },
-      });
+      throw this.budgetOverlapConflict(overlap.cycleStart, overlap.cycleEnd);
     }
-    const created = await this.budgets.create(scope, {
-      amount: input.amount,
-      spent: 0,
-      currency: "VND",
-      cycleStart,
-      cycleEnd,
-    } as Partial<BudgetEntity>);
-    return toBudgetResponse(created);
+    try {
+      const created = await this.budgets.create(scope, {
+        amount: input.amount,
+        spent: 0,
+        currency: "VND",
+        cycleStart,
+        cycleEnd,
+      } as Partial<BudgetEntity>);
+      return toBudgetResponse(created);
+    } catch (error) {
+      // A concurrent create for the same cycle won the unique-index race — the
+      // findOverlapping pre-check above cannot catch a not-yet-committed sibling.
+      // Surface the same 409 the pre-check would have.
+      if (isDuplicateKeyError(error)) {
+        throw this.budgetOverlapConflict(cycleStart, cycleEnd);
+      }
+      throw error;
+    }
+  }
+
+  /** The 409 raised when a budget already covers the requested cycle. */
+  private budgetOverlapConflict(
+    cycleStart: Date,
+    cycleEnd: Date,
+  ): ConflictException {
+    return new ConflictException({
+      code: ErrorCode.CONFLICT,
+      message:
+        "An active budget already covers this period. Wait for the current cycle to end before setting a new one.",
+      details: {
+        cycleStart: cycleStart.toISOString(),
+        cycleEnd: cycleEnd.toISOString(),
+      },
+    });
   }
 
   async getCurrentBudget(scope: ScopeContext): Promise<BudgetResponse> {

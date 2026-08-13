@@ -166,13 +166,12 @@ describe("UserManageDialog suspend confirmation", () => {
   });
 });
 
-describe("UserManageDialog self role change", () => {
-  it("refreshes the session user after changing the current admin's own roles", async () => {
-    // The admin (u1) manages their own account and removes admin (confirmed).
+describe("UserManageDialog self role guard", () => {
+  it("disables the admin-role switch for the current admin's own account", () => {
+    // Self-demotion is rejected by the backend unconditionally, so the control
+    // is disabled for the current user rather than letting them trigger a 400.
     signInAs("u1");
     const adminRow: AdminUserResponse = { ...user, roles: ["user", "admin"] };
-    updateUserRoles.mockResolvedValue({ ...adminRow, roles: ["user"] });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     renderWithProviders(
       <UserManageDialog
@@ -182,16 +181,22 @@ describe("UserManageDialog self role change", () => {
       />,
     );
 
-    await userEvent.click(
+    expect(
       screen.getByRole("switch", { name: "Toggle administrator role" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/can't change your own admin role/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the admin-role switch enabled for other users", () => {
+    signInAs("someone-else");
+    renderWithProviders(
+      <UserManageDialog user={user} onClose={() => {}} onChanged={() => {}} />,
     );
 
-    await waitFor(() => {
-      expect(updateUserRoles).toHaveBeenCalledWith("u1", ["user"]);
-    });
-    // The in-memory session user reflects the new roles so guards re-evaluate.
-    await waitFor(() => {
-      expect(sessionStore.getState().user?.roles).toEqual(["user"]);
-    });
+    expect(
+      screen.getByRole("switch", { name: "Toggle administrator role" }),
+    ).toBeEnabled();
   });
 });

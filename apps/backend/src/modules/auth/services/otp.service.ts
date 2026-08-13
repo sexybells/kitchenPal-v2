@@ -89,7 +89,7 @@ export class OtpService {
 
   private invalid(message = "Invalid verification code"): UnauthorizedException {
     return new UnauthorizedException({
-      code: ErrorCode.UNAUTHORIZED,
+      code: ErrorCode.INVALID_CREDENTIALS,
       message,
     });
   }

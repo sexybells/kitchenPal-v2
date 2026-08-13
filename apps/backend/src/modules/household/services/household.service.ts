@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from "@nestjs/common";
 import type {
   CreateHouseholdInput,
@@ -381,6 +382,17 @@ export class HouseholdService {
       throw new NotFoundException({
         code: ErrorCode.NOT_FOUND,
         message: "Account no longer exists",
+      });
+    }
+    // Suspension gate — this is a token-minting path (create/accept-invite issue
+    // a fresh refresh family). Without this, a suspended user holding a still-
+    // valid access token could mint a brand-new, rotatable family here and defeat
+    // the ban that admin suspension enforces via revokeAllForUser. Mirrors
+    // AuthService.buildResult so EVERY mint path rejects a suspended account.
+    if (user.suspendedAt) {
+      throw new UnauthorizedException({
+        code: ErrorCode.ACCOUNT_SUSPENDED,
+        message: "This account has been suspended",
       });
     }
     const tokens = await this.tokens.issueTokenPair(toTokenSubject(user));

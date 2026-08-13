@@ -107,16 +107,12 @@ export class AuthService {
     const ok = await this.passwords.verify(input.password, hash);
     if (!user || !user.passwordHash || !ok) {
       throw new UnauthorizedException({
-        code: ErrorCode.UNAUTHORIZED,
+        code: ErrorCode.INVALID_CREDENTIALS,
         message: "Invalid email or password",
       });
     }
-    if (user.suspendedAt) {
-      throw new UnauthorizedException({
-        code: ErrorCode.UNAUTHORIZED,
-        message: "This account has been suspended",
-      });
-    }
+    // Suspension is enforced centrally in buildResult() so every sign-in path
+    // (password, social, phone-OTP) is covered by a single gate.
     return this.buildResult(user);
   }
 
@@ -142,11 +138,22 @@ export class AuthService {
       tokenHash: hashToken(token),
       expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_SECONDS * 1000),
     });
-    await this.email.send({
-      to: input.email,
-      subject: "Reset your KitchenPal password",
-      text: `Use this token to reset your password: ${token}\n${this.config.APP_WEB_URL}/reset-password?token=${token}`,
-    });
+    // Fire-and-forget the delivery so response latency is (near-)identical
+    // whether or not the address is registered. Awaiting the provider round-trip
+    // here — only on the registered branch — was a timing oracle for account
+    // enumeration (the identical response body alone did not equalize timing).
+    void this.email
+      .send({
+        to: input.email,
+        subject: "Reset your KitchenPal password",
+        text: `Use this token to reset your password: ${token}\n${this.config.APP_WEB_URL}/reset-password?token=${token}`,
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Failed to send password reset email: ${String(error)}`,
+          "AuthService",
+        );
+      });
     return this.devResult(token);
   }
 
@@ -374,6 +381,17 @@ export class AuthService {
   }
 
   private async buildResult(user: UserDoc): Promise<AuthResult> {
+    // Central suspension gate covering EVERY sign-in path (password, social,
+    // phone-OTP, and — harmlessly — register). Admin suspension revokes refresh
+    // families, but without this a suspended account could still re-authenticate
+    // for a fresh token pair via /auth/google, /auth/apple, or
+    // /auth/login-phone-otp, defeating the ban.
+    if (user.suspendedAt) {
+      throw new UnauthorizedException({
+        code: ErrorCode.ACCOUNT_SUSPENDED,
+        message: "This account has been suspended",
+      });
+    }
     const tokens = await this.tokens.issueTokenPair(toTokenSubject(user));
     return { user: toUserResponse(user), tokens };
   }

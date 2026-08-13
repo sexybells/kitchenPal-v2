@@ -36,3 +36,24 @@ export class Budget {
 export const BudgetSchema = SchemaFactory.createForClass(Budget);
 BudgetSchema.plugin(baseSchemaPlugin);
 BudgetSchema.plugin(scopedSchemaPlugin);
+
+// One live budget per cycle within a scope, backing the application-level overlap
+// check with a DB constraint so two concurrent creates on the same UTC day (which
+// produce an identical deterministic cycle window) cannot BOTH commit. A personal
+// budget is unique per creator; a household budget is unique per household. The
+// service still runs findOverlapping for the friendly message and then treats a
+// duplicate-key error as the same 409 CONFLICT.
+BudgetSchema.index(
+  { cycleStart: 1, createdBy: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { deletedAt: null, scope: "personal" },
+  },
+);
+BudgetSchema.index(
+  { cycleStart: 1, householdId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { deletedAt: null, scope: "household" },
+  },
+);

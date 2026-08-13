@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { FilterQuery, HydratedDocument } from "mongoose";
+import type { ClientSession, FilterQuery, HydratedDocument } from "mongoose";
 import { Model } from "mongoose";
 import type { MealType } from "@kitchenpal/api-contract";
 import { ScopedRepository } from "../../../common/database/base.repository";
@@ -106,6 +106,7 @@ export class RecipeRepository extends ScopedRepository<RecipeEntity> {
   async applyRatingStats(
     id: string,
     stats: { averageRating: number; reviewCount: number },
+    session?: ClientSession,
   ): Promise<void> {
     await this.model
       .updateOne(
@@ -116,6 +117,7 @@ export class RecipeRepository extends ScopedRepository<RecipeEntity> {
             reviewCount: stats.reviewCount,
           },
         },
+        { session },
       )
       .exec();
   }

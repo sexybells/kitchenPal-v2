@@ -82,8 +82,16 @@ export class HouseholdMessageRepository extends BaseRepository<HouseholdMessageE
     await this.model
       .updateOne(filter, { $pull: { "vote.ballots": { userId } } })
       .exec();
+    // Guard the push so a concurrent duplicate cannot append a second ballot.
+    // MongoDB serializes writes to a single document: once one request's push
+    // commits, the other's `$ne` filter no longer matches and it is a no-op — so
+    // the tally can never double-count. A legitimate re-vote still works (the
+    // pull above clears the prior ballot, so `$ne` passes on the next push).
     await this.model
-      .updateOne(filter, { $push: { "vote.ballots": { userId, optionId } } })
+      .updateOne(
+        { ...filter, "vote.ballots.userId": { $ne: userId } },
+        { $push: { "vote.ballots": { userId, optionId } } },
+      )
       .exec();
     return this.model.findOne(filter).exec();
   }

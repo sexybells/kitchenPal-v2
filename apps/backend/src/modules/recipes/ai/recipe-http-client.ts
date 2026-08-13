@@ -1,5 +1,7 @@
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { lookup as resolveHost } from "node:dns/promises";
+import type { LookupAddress, LookupOptions } from "node:dns";
+import { isIP, type LookupFunction } from "node:net";
+import { Agent, fetch as undiciFetch } from "undici";
 
 /** Result of an outbound HTTP GET: status plus decoded body. */
 export interface HttpTextResponse {
@@ -33,13 +35,22 @@ const MAX_REDIRECTS = 3;
  */
 export class BlockedAddressError extends Error {}
 
+/** A URL proven public, plus the exact addresses it resolved to. */
+export interface ValidatedUrl {
+  url: URL;
+  /** Every address the host resolved to — each verified public. */
+  addresses: string[];
+}
+
 /**
  * Rejects a URL that does not use http(s) or that resolves to a private,
  * loopback, link-local, or otherwise non-routable address — the SSRF guard for
  * user-supplied import URLs. DNS names are resolved and EVERY resolved address is
- * checked, so a public name pointing at an internal IP is still blocked.
+ * checked, so a public name pointing at an internal IP is still blocked. The
+ * resolved addresses are returned so the caller can PIN the connection to a
+ * validated IP (defeating DNS-rebinding between this check and the socket).
  */
-export async function assertPublicUrl(rawUrl: string): Promise<URL> {
+export async function assertPublicUrl(rawUrl: string): Promise<ValidatedUrl> {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
@@ -57,7 +68,9 @@ export async function assertPublicUrl(rawUrl: string): Promise<URL> {
   const addresses =
     literalFamily !== 0
       ? [hostname]
-      : (await lookup(hostname, { all: true })).map((entry) => entry.address);
+      : (await resolveHost(hostname, { all: true })).map(
+          (entry) => entry.address,
+        );
   if (addresses.length === 0) {
     throw new BlockedAddressError(`Could not resolve host: ${hostname}`);
   }
@@ -68,7 +81,34 @@ export async function assertPublicUrl(rawUrl: string): Promise<URL> {
       );
     }
   }
-  return parsed;
+  return { url: parsed, addresses };
+}
+
+/**
+ * An undici dispatcher whose connector always dials `pinnedIp` — the address we
+ * already validated — regardless of what DNS would return at connect time. The
+ * Host header and TLS SNI still use the URL's hostname, so this only pins the
+ * socket target, closing the DNS-rebinding TOCTOU while keeping normal fetch
+ * semantics (redirect handling, gzip/br decoding, timeouts).
+ */
+function pinnedDispatcher(pinnedIp: string): Agent {
+  const family = isIP(pinnedIp);
+  const pinnedLookup: LookupFunction = (
+    _hostname: string,
+    options: LookupOptions,
+    callback: (
+      err: NodeJS.ErrnoException | null,
+      address: string | LookupAddress[],
+      family?: number,
+    ) => void,
+  ) => {
+    if (options.all) {
+      callback(null, [{ address: pinnedIp, family }]);
+    } else {
+      callback(null, pinnedIp, family);
+    }
+  };
+  return new Agent({ connect: { lookup: pinnedLookup } });
 }
 
 /**
@@ -84,21 +124,29 @@ export class FetchRecipeHttpClient implements RecipeHttpClient {
       let current = url;
       for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
         // Validate the address BEFORE each fetch, including every redirect hop,
-        // so a public URL cannot 3xx into an internal target.
-        await assertPublicUrl(current);
-        const response = await fetch(current, {
-          method: "GET",
-          redirect: "manual",
-          signal: controller.signal,
-          headers: { accept: "text/html,application/json" },
-        });
-        const location = response.headers.get("location");
-        if (isRedirect(response.status) && location) {
-          current = new URL(location, current).toString();
-          continue;
+        // so a public URL cannot 3xx into an internal target — THEN pin the
+        // connection to the just-validated IP so the client cannot re-resolve
+        // the hostname to a different address (DNS rebinding) at connect time.
+        const { addresses } = await assertPublicUrl(current);
+        const dispatcher = pinnedDispatcher(addresses[0]!);
+        try {
+          const response = await undiciFetch(current, {
+            method: "GET",
+            redirect: "manual",
+            signal: controller.signal,
+            headers: { accept: "text/html,application/json" },
+            dispatcher,
+          });
+          const location = response.headers.get("location");
+          if (isRedirect(response.status) && location) {
+            current = new URL(location, current).toString();
+            continue;
+          }
+          const body = (await response.text()).slice(0, MAX_BODY_BYTES);
+          return { status: response.status, body };
+        } finally {
+          void dispatcher.close();
         }
-        const body = (await response.text()).slice(0, MAX_BODY_BYTES);
-        return { status: response.status, body };
       }
       throw new BlockedAddressError("Too many redirects");
     } finally {

@@ -17,10 +17,17 @@ export const ErrorCode = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   BAD_REQUEST: "BAD_REQUEST",
   UNAUTHORIZED: "UNAUTHORIZED",
+  // Wrong password / bad OTP — distinct from a generic UNAUTHORIZED (which
+  // clients treat as an expired session) so the UI can show "wrong credentials".
+  INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
+  // A suspended account attempted to authenticate (any sign-in path).
+  ACCOUNT_SUSPENDED: "ACCOUNT_SUSPENDED",
   FORBIDDEN: "FORBIDDEN",
   NOT_FOUND: "NOT_FOUND",
   CONFLICT: "CONFLICT",
   EMAIL_ALREADY_EXISTS: "EMAIL_ALREADY_EXISTS",
+  // A user tried to block themselves in the community feed — never meaningful.
+  CANNOT_BLOCK_SELF: "CANNOT_BLOCK_SELF",
   OPTIMISTIC_LOCK_CONFLICT: "OPTIMISTIC_LOCK_CONFLICT",
   RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
   SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",

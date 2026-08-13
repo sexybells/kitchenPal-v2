@@ -398,5 +398,71 @@ describe("Admin, subscriptions, reports & settings (e2e)", () => {
       expect(res.status).toBe(200);
       expect(adminUserResponseSchema.parse(res.body.data).suspended).toBe(true);
     });
+
+    it("blocks a suspended user from re-authenticating on every sign-in path", async () => {
+      const admin = await makeAdmin();
+
+      // Password account: suspend, then a fresh password login is refused.
+      const email = `victim-${Math.random().toString(36).slice(2)}@example.com`;
+      const victim = await register(email);
+      await request(server)
+        .patch(`/admin/users/${victim.userId}/suspend`)
+        .set(auth(admin.token))
+        .send({ suspended: true })
+        .expect(200);
+      const pwLogin = await request(server)
+        .post("/auth/login")
+        .send({ email, password: "supersecret" });
+      expect(pwLogin.status).toBe(401);
+      expect(pwLogin.body.error.code).toBe("ACCOUNT_SUSPENDED");
+
+      // Phone-OTP account — the path that previously bypassed suspension by
+      // minting a fresh token pair for a banned user.
+      const phone = "+15550002222";
+      const otp1 = await request(server)
+        .post("/auth/request-phone-otp")
+        .send({ phone });
+      const firstLogin = await request(server)
+        .post("/auth/login-phone-otp")
+        .send({ phone, code: otp1.body.data.devToken, displayName: "Victim" });
+      expect(firstLogin.status).toBe(200);
+      const phoneUserId = firstLogin.body.data.user.id as string;
+
+      await request(server)
+        .patch(`/admin/users/${phoneUserId}/suspend`)
+        .set(auth(admin.token))
+        .send({ suspended: true })
+        .expect(200);
+
+      const otp2 = await request(server)
+        .post("/auth/request-phone-otp")
+        .send({ phone });
+      const reLogin = await request(server)
+        .post("/auth/login-phone-otp")
+        .send({ phone, code: otp2.body.data.devToken });
+      expect(reLogin.status).toBe(401);
+      expect(reLogin.body.error.code).toBe("ACCOUNT_SUSPENDED");
+    });
+
+    it("blocks a suspended user from minting a fresh token family via household create", async () => {
+      const admin = await makeAdmin();
+      const victim = await register();
+      // Suspend AFTER the victim already holds a valid (stateless) access token.
+      await request(server)
+        .patch(`/admin/users/${victim.userId}/suspend`)
+        .set(auth(admin.token))
+        .send({ suspended: true })
+        .expect(200);
+
+      // The access token still passes the JWT guard, but creating a household
+      // must NOT issue a new, rotatable token family for a suspended account
+      // (that would escalate the access-TTL window into a durable session).
+      const res = await request(server)
+        .post("/households")
+        .set(auth(victim.token))
+        .send({ name: "Bypass attempt" });
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("ACCOUNT_SUSPENDED");
+    });
   });
 });

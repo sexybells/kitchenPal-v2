@@ -7,7 +7,6 @@ import type {
 import { adminApi } from "@/api/admin";
 import { ApiClientError } from "@/api/errors";
 import { useSession } from "@/auth/use-session";
-import { sessionStore } from "@/auth/session-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,9 +32,11 @@ interface UserManageDialogProps {
  * cancel their subscription (source=admin). Subscription assignment is the only
  * path to Pro in v1, so it lives here rather than in a self-serve flow.
  *
- * Self-lockout guard: an admin cannot remove their OWN admin role or suspend
- * their OWN account from here — both would immediately revoke their access. The
- * controls are disabled for the current user (the backend rejects these too).
+ * Self-lockout guards: an admin cannot put their OWN account into a locked-out
+ * state from here. Both the admin-role switch and the suspend button are DISABLED
+ * for the current user's own row, and the backend independently rejects
+ * self-demotion and self-suspension (and never lets the last remaining admin be
+ * demoted). Two layers so a stale UI can't brick the console.
  */
 export function UserManageDialog({
   user,
@@ -89,14 +90,9 @@ export function UserManageDialog({
       const roles: Role[] = nextIsAdmin ? ["user", "admin"] : ["user"];
       return adminApi.updateUserRoles(user!.id, roles);
     },
-    onSuccess: (updated) => {
-      // If an admin changed their own roles, refresh the session user so
-      // role-dependent guards (RequireAdmin) re-evaluate without a reload.
-      if (isSelf && session.user) {
-        sessionStore.setUser({ ...session.user, roles: updated.roles });
-      }
-      afterChange();
-    },
+    // The role switch is disabled for the current user (self-demotion is blocked
+    // by the backend anyway), so this only ever changes OTHER users' roles.
+    onSuccess: afterChange,
     onError,
   });
 
@@ -134,21 +130,6 @@ export function UserManageDialog({
     suspendMutation.mutate(suspending);
   }
 
-  function handleRoleToggle(nextIsAdmin: boolean) {
-    // Removing your OWN admin role locks you out of the console immediately —
-    // require an explicit confirmation before attempting it.
-    const removingOwnAdmin = isSelf && !nextIsAdmin;
-    if (
-      removingOwnAdmin &&
-      !window.confirm(
-        "Remove your OWN admin access? You will be locked out of this console immediately.",
-      )
-    ) {
-      return;
-    }
-    roleMutation.mutate(nextIsAdmin);
-  }
-
   return (
     <Dialog open={user !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -164,14 +145,14 @@ export function UserManageDialog({
                 <Label>Administrator</Label>
                 <p className={isSelf ? "text-xs text-danger" : "text-xs text-text-muted"}>
                   {isSelf
-                    ? "This is your account — removing admin access will lock you out (you'll be asked to confirm)."
+                    ? "This is your account — you can't change your own admin role here."
                     : "Grants access to this console."}
                 </p>
               </div>
               <Switch
                 checked={isAdmin}
-                disabled={roleMutation.isPending}
-                onCheckedChange={handleRoleToggle}
+                disabled={roleMutation.isPending || isSelf}
+                onCheckedChange={(next) => roleMutation.mutate(next)}
                 aria-label="Toggle administrator role"
               />
             </section>

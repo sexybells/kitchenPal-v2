@@ -338,13 +338,13 @@ export class PantryService {
       return work();
     }
     const cacheKey = `pantry:idem:${operation}:${scope.userId}:${key}`;
-    const cached = await this.cache.get<T>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-    const result = await work();
-    await this.cache.set(cacheKey, result, IDEMPOTENCY_TTL_MS);
-    return result;
+    // `wrap` coalesces concurrent calls for the same key into ONE execution and
+    // caches the result — so a simultaneous double-tap / retry no longer races
+    // the old get-then-set and deplete twice. (Single-flight is per-process;
+    // together with the transactional depletion this covers the realistic
+    // duplicate-request window. A failed op is not cached, so a genuine retry
+    // after an error still re-runs.)
+    return this.cache.wrap(cacheKey, work, IDEMPOTENCY_TTL_MS) as Promise<T>;
   }
 
   private notFound(id: string): NotFoundException {

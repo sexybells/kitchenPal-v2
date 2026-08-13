@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { FilterQuery, HydratedDocument } from "mongoose";
+import type { ClientSession, FilterQuery, HydratedDocument } from "mongoose";
 import { Model, Types } from "mongoose";
 import { ScopedRepository } from "../../../common/database/base.repository";
 import type { ScopedDocumentFields } from "../../../common/database/base.schema";
@@ -35,10 +35,13 @@ export class RecipeCommentRepository extends ScopedRepository<RecipeCommentEntit
   findOwnByRecipe(
     scope: ScopeContext,
     recipeId: string,
+    session?: ClientSession,
   ): Promise<CommentDoc | null> {
-    return this.findOne(scope, {
-      recipeId,
-    } as FilterQuery<RecipeCommentEntity>);
+    return this.findOne(
+      scope,
+      { recipeId } as FilterQuery<RecipeCommentEntity>,
+      session,
+    );
   }
 
   /** All comments on a recipe (any author), newest first. */
@@ -50,7 +53,10 @@ export class RecipeCommentRepository extends ScopedRepository<RecipeCommentEntit
   }
 
   /** Recomputes average rating and count from every comment on the recipe. */
-  async ratingStatsFor(recipeId: string): Promise<RecipeRatingStats> {
+  async ratingStatsFor(
+    recipeId: string,
+    session?: ClientSession,
+  ): Promise<RecipeRatingStats> {
     const [row] = await this.model
       .aggregate<{ averageRating: number; reviewCount: number }>([
         { $match: { recipeId: new Types.ObjectId(recipeId), deletedAt: null } },
@@ -62,6 +68,7 @@ export class RecipeCommentRepository extends ScopedRepository<RecipeCommentEntit
           },
         },
       ])
+      .session(session ?? null)
       .exec();
     if (!row) {
       return { averageRating: 0, reviewCount: 0 };

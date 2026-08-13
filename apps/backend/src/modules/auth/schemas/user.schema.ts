@@ -60,8 +60,12 @@ export class User {
   activeHouseholdId!: Types.ObjectId | null;
 
   /**
-   * Set by an admin to suspend the account. A suspended user is rejected at
-   * login and by the auth guard, so an existing token cannot outlive suspension.
+   * Set by an admin to suspend the account. Suspension is enforced at sign-in
+   * time — every token-minting path (password, social, phone-OTP) rejects a
+   * suspended user (see AuthService.buildResult) — and admin suspension also
+   * revokes all refresh families immediately. Access tokens are stateless and
+   * short-lived, so an already-issued access token stays valid until it expires
+   * (bounded by the access-token TTL); the auth guard does not read this field.
    */
   @Prop({ type: Date, default: null })
   suspendedAt!: Date | null;

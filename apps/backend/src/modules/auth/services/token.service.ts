@@ -163,6 +163,15 @@ export class TokenService {
       await this.refreshTokens.revokeFamily(record.familyId);
       throw unauthorized("Account no longer exists");
     }
+    if (user.suspendedAt) {
+      // Defense-in-depth: a suspended user must not rotate an existing family
+      // into a fresh token pair. Every mint path already gates suspension and
+      // admin suspension revokes all families, so this only bites a family that
+      // somehow survived — kill it so it cannot be retried. The user doc is
+      // already loaded here, so this adds no extra query on the refresh path.
+      await this.refreshTokens.revokeFamily(record.familyId);
+      throw unauthorized("This account has been suspended");
+    }
 
     const subject = toTokenSubject(user);
     await this.refreshTokens.issue({

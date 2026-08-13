@@ -7,6 +7,7 @@ type ErrorKey =
   | "errors.invalidResponse"
   | "errors.sessionExpired"
   | "errors.invalidCredentials"
+  | "errors.accountSuspended"
   | "errors.validation"
   | "errors.rateLimited"
   | "errors.emailTaken"
@@ -28,6 +29,7 @@ const CODE_TO_KEY: Record<string, ErrorKey> = {
   SESSION_EXPIRED: "errors.sessionExpired",
   // Common backend auth codes.
   INVALID_CREDENTIALS: "errors.invalidCredentials",
+  ACCOUNT_SUSPENDED: "errors.accountSuspended",
   UNAUTHENTICATED: "errors.sessionExpired",
   UNAUTHORIZED: "errors.sessionExpired",
   TOKEN_EXPIRED: "errors.sessionExpired",

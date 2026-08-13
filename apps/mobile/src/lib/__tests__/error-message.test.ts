@@ -52,6 +52,18 @@ describe("resolveErrorMessage", () => {
     ).toBe(i18n.t("errors.server"));
   });
 
+  it("maps INVALID_CREDENTIALS to the wrong-credentials message, not session-expired", () => {
+    const message = resolveErrorMessage(err("INVALID_CREDENTIALS", "x", 401), i18n.t);
+    expect(message).toBe(i18n.t("errors.invalidCredentials"));
+    expect(message).not.toBe(i18n.t("errors.sessionExpired"));
+  });
+
+  it("maps ACCOUNT_SUSPENDED to the suspended message", () => {
+    expect(resolveErrorMessage(err("ACCOUNT_SUSPENDED", "x", 401), i18n.t)).toBe(
+      i18n.t("errors.accountSuspended"),
+    );
+  });
+
   it("falls back to a localized message for a non-ApiClientError", () => {
     expect(resolveErrorMessage(new Error("boom"), i18n.t)).toBe(
       i18n.t("errors.server"),

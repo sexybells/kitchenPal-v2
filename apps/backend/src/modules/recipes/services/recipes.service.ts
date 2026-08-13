@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { InjectConnection } from "@nestjs/mongoose";
 import type {
   CommunityQuery,
   ConfirmImportInput,
@@ -22,7 +23,12 @@ import type {
   UpdatePreferenceInput,
   UpdateRecipeInput,
 } from "@kitchenpal/api-contract";
-import { Types, type HydratedDocument } from "mongoose";
+import {
+  Types,
+  type ClientSession,
+  type Connection,
+  type HydratedDocument,
+} from "mongoose";
 import { isDuplicateKeyError } from "../../../common/database/mongo-errors";
 import { ErrorCode } from "../../../common/http/error-codes";
 import { PageResult, paginate } from "../../../common/http/page-result";
@@ -80,6 +86,7 @@ export class RecipesService {
     private readonly importer: RecipeImportService,
     private readonly externalSearch: ExternalSearchService,
     private readonly users: UserRepository,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   async list(
@@ -292,27 +299,57 @@ export class RecipesService {
   ): Promise<RecipeCommentResponse> {
     await this.requireReadable(scope, id);
     const authorName = await this.resolveAuthorName(scope.userId);
-    // One rating per user per recipe: a repeat rating updates the caller's
-    // existing one rather than stacking, so a single user cannot skew the
-    // recipe's average or inflate the reviewer count.
-    const existing = await this.comments.findOwnByRecipe(scope, id);
-    const comment = existing
-      ? await this.comments.updateWithVersion(
-          scope,
-          existing.id,
-          existing.version,
-          { rating: input.rating, text: input.text ?? null, authorName },
-        )
-      : await this.comments.create(scope, {
-          recipeId: new Types.ObjectId(id),
-          rating: input.rating,
-          text: input.text ?? null,
-          authorName,
-        } as Partial<RecipeCommentEntity>);
-    // Recompute the recipe's rating aggregate from every user's (deduped) rating.
-    const stats = await this.comments.ratingStatsFor(id);
-    await this.recipes.applyRatingStats(id, stats);
-    return toCommentResponse(comment);
+    // Write the comment AND recompute the recipe aggregate in ONE transaction, so
+    // two concurrent ratings cannot lose an update: a write-write conflict on the
+    // recipe doc aborts the loser, which withTransaction retries against fresh
+    // data — eliminating the old read-aggregate-then-blind-$set race.
+    return this.inTransaction(async (session) => {
+      // One rating per user per recipe: a repeat rating updates the caller's
+      // existing one rather than stacking, so a single user cannot skew the
+      // recipe's average or inflate the reviewer count.
+      const existing = await this.comments.findOwnByRecipe(scope, id, session);
+      const comment = existing
+        ? await this.comments.updateWithVersion(
+            scope,
+            existing.id,
+            existing.version,
+            { rating: input.rating, text: input.text ?? null, authorName },
+            session,
+          )
+        : await this.comments.create(
+            scope,
+            {
+              recipeId: new Types.ObjectId(id),
+              rating: input.rating,
+              text: input.text ?? null,
+              authorName,
+            } as Partial<RecipeCommentEntity>,
+            session,
+          );
+      const stats = await this.comments.ratingStatsFor(id, session);
+      await this.recipes.applyRatingStats(id, stats, session);
+      return toCommentResponse(comment);
+    });
+  }
+
+  /**
+   * Runs `work` inside a MongoDB transaction; a write conflict (e.g. a
+   * concurrent rating recompute on the same recipe) aborts and the driver
+   * retries the whole callback, keeping the rating aggregate consistent.
+   */
+  private async inTransaction<T>(
+    work: (session: ClientSession) => Promise<T>,
+  ): Promise<T> {
+    const session = await this.connection.startSession();
+    try {
+      let result!: T;
+      await session.withTransaction(async () => {
+        result = await work(session);
+      });
+      return result;
+    } finally {
+      await session.endSession();
+    }
   }
 
   private async resolveAuthorName(userId: string): Promise<string> {
