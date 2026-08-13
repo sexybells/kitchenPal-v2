@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
 import { RecipeCreateDialog } from "./recipe-create-dialog";
+import { RecipeImageDialog } from "./recipe-image-dialog";
 
 /**
  * Recipe management: list + search across all tenants, create a system recipe,
@@ -27,6 +28,9 @@ export function RecipesPage() {
     fetchPage: adminApi.listRecipes,
   });
   const [createOpen, setCreateOpen] = useState(false);
+  const [imageTarget, setImageTarget] = useState<AdminRecipeResponse | null>(
+    null,
+  );
 
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: ["recipes"] });
@@ -44,6 +48,21 @@ export function RecipesPage() {
   });
 
   const columns: DataTableColumn<AdminRecipeResponse>[] = [
+    {
+      key: "imageUrl",
+      header: "",
+      // Thumbnail so a photo-less recipe is visible at a glance in the list.
+      render: (row) =>
+        row.imageUrl ? (
+          <img
+            src={row.imageUrl}
+            alt=""
+            className="h-10 w-10 rounded object-cover"
+          />
+        ) : (
+          <div className="h-10 w-10 rounded bg-muted" aria-label="No photo" />
+        ),
+    },
     { key: "name", header: "Name", render: (row) => row.name },
     { key: "scope", header: "Scope", render: (row) => row.scope },
     {
@@ -71,6 +90,13 @@ export function RecipesPage() {
       header: "",
       render: (row) => (
         <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setImageTarget(row)}
+          >
+            Photo
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -127,6 +153,13 @@ export function RecipesPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={invalidate}
+      />
+      <RecipeImageDialog
+        recipe={imageTarget}
+        onOpenChange={(open) => {
+          if (!open) setImageTarget(null);
+        }}
+        onSaved={invalidate}
       />
     </div>
   );

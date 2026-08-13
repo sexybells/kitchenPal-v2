@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Text, Icon, ListRow, LoadingState, EmptyState } from "../../ui";
 import { theme } from "../../theme";
 import { useRecipeList } from "./hooks";
-import { dishEmoji } from "./labels";
+import { dishPlaceholder } from "./dish-placeholder";
 
 export interface RecipePickerProps {
   visible: boolean;
@@ -57,7 +57,9 @@ export function RecipePicker({ visible, onClose, onSelect }: RecipePickerProps) 
                 key={recipe.id}
                 title={recipe.name}
                 leading={
-                  <Text variant="heading-s">{dishEmoji(recipe.mealType)}</Text>
+                  <Text variant="heading-s">
+                    {dishPlaceholder(recipe.name, recipe.mealType).emoji}
+                  </Text>
                 }
                 onPress={() => onSelect(recipe.id)}
                 testID={`recipe-pick-${recipe.id}`}

@@ -4,6 +4,7 @@ import type { AppConfig } from "../../../config/env.schema";
 import type { SubscriptionPlanRepository } from "../../subscriptions/repositories/subscription-plan.repository";
 import type { UserSubscription } from "../../subscriptions/schemas/user-subscription.schema";
 import type { Recipe } from "../../recipes/schemas/recipe.schema";
+import type { SystemRecipeSeederService } from "../../recipes/services/system-recipe-seeder.service";
 import type { SystemSetting } from "../schemas/system-setting.schema";
 import type { AdminAuditService } from "./admin-audit.service";
 import { DevToolsService } from "./dev-tools.service";
@@ -16,6 +17,7 @@ function buildService(nodeEnv: AppConfig["NODE_ENV"]): DevToolsService {
   const subscriptionModel = {} as Model<UserSubscription>;
   const settingModel = {} as Model<SystemSetting>;
   const audit = {} as AdminAuditService;
+  const recipeSeeder = {} as SystemRecipeSeederService;
   return new DevToolsService(
     config,
     plans,
@@ -23,6 +25,7 @@ function buildService(nodeEnv: AppConfig["NODE_ENV"]): DevToolsService {
     subscriptionModel,
     settingModel,
     audit,
+    recipeSeeder,
   );
 }
 

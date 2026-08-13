@@ -70,6 +70,8 @@ export type AdminHouseholdResponse = z.infer<
 export const adminRecipeResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
+  /** Dish photo, or null when the recipe still falls back to a placeholder. */
+  imageUrl: z.string().nullable(),
   scope: dataScopeSchema,
   ownerUserId: z.string().nullable(),
   householdId: z.string().nullable(),

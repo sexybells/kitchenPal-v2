@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { MealPlanSlot } from "@kitchenpal/api-contract";
 import { Card, Text, Icon } from "../../ui";
 import { theme } from "../../theme";
-import { dishEmoji, mealTypeLabel } from "./labels";
+import { dishPlaceholder } from "./dish-placeholder";
+import { mealTypeLabel } from "./labels";
 
 export interface MealSlotCardProps {
   slot: MealPlanSlot;
@@ -40,7 +41,9 @@ export function MealSlotCard({
       {filled ? (
         <Card onPress={onOpen} padded testID={testID ? `${testID}-filled` : undefined}>
           <View style={styles.row}>
-            <Text variant="heading-s">{dishEmoji(slot.mealType)}</Text>
+            <Text variant="heading-s">
+              {dishPlaceholder(slot.recipeName ?? "", slot.mealType).emoji}
+            </Text>
             <Text
               variant="title"
               color="text"

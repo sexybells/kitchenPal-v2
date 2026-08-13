@@ -64,3 +64,40 @@ describe("matchIngredients", () => {
     expect(result.matchScore).toBe(1);
   });
 });
+
+describe("matchIngredients with Vietnamese names", () => {
+  it("matches a whole accented word, not its accent-stripped fragments", () => {
+    const result = matchIngredients(
+      [ingredient("thịt ba chỉ"), ingredient("nước mắm")],
+      [stock("thịt ba chỉ"), stock("nước mắm")],
+    );
+    expect(result.available).toHaveLength(2);
+  });
+
+  it("keeps ingredients distinct when only the diacritics differ", () => {
+    // "cá" and "cà chua" share no whole word — stripping diacritics would make
+    // a pantry with fish report tomatoes as on hand.
+    const result = matchIngredients([ingredient("cà chua")], [stock("cá")]);
+    expect(result.available).toHaveLength(0);
+
+    const butter = matchIngredients([ingredient("bơ")], [stock("bò")]);
+    expect(butter.available).toHaveLength(0);
+  });
+
+  it("still matches a broader pantry item to a narrower Vietnamese ingredient", () => {
+    const result = matchIngredients(
+      [ingredient("thịt bò nạm")],
+      [stock("thịt bò")],
+    );
+    expect(result.available).toHaveLength(1);
+  });
+
+  it("matches across unicode normalization forms of the same name", () => {
+    // Same word, decomposed (NFD) in the pantry vs composed (NFC) in the recipe.
+    const result = matchIngredients(
+      [ingredient("trứng gà".normalize("NFC"))],
+      [stock("trứng gà".normalize("NFD"))],
+    );
+    expect(result.available).toHaveLength(1);
+  });
+});

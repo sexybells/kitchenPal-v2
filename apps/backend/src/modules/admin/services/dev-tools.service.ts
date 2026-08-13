@@ -10,6 +10,7 @@ import {
 } from "../../subscriptions/repositories/subscription-plan.repository";
 import { UserSubscription } from "../../subscriptions/schemas/user-subscription.schema";
 import { Recipe } from "../../recipes/schemas/recipe.schema";
+import { SystemRecipeSeederService } from "../../recipes/services/system-recipe-seeder.service";
 import { SystemSetting } from "../schemas/system-setting.schema";
 import { AdminAuditService } from "./admin-audit.service";
 
@@ -26,13 +27,6 @@ const SEED_PLANS: Pick<
     features: ["AI suggestions", "Unlimited households", "Priority support"],
     active: true,
   },
-];
-
-/** A minimal set of system recipes for a dev environment. */
-const SEED_RECIPES = [
-  { name: "Cơm chiên dương châu", mealType: "dinner" as const },
-  { name: "Phở bò", mealType: "lunch" as const },
-  { name: "Trứng chiên", mealType: "breakfast" as const },
 ];
 
 /**
@@ -55,6 +49,7 @@ export class DevToolsService {
     @InjectModel(SystemSetting.name)
     private readonly settingModel: Model<SystemSetting>,
     private readonly audit: AdminAuditService,
+    private readonly recipeSeeder: SystemRecipeSeederService,
   ) {
     this.isProduction = config.NODE_ENV === "production";
   }
@@ -78,34 +73,19 @@ export class DevToolsService {
     return { action: "seed-plans", affected };
   }
 
+  /**
+   * Seeds the system recipe library from the admin console. The seeding itself
+   * lives in {@link SystemRecipeSeederService} (shared with the production seed
+   * script); this wrapper only adds the dev-only guard and the audit trail.
+   */
   async seedRecipes(actorId: string): Promise<DevToolResult> {
     this.assertNonProduction();
-    let affected = 0;
-    for (const recipe of SEED_RECIPES) {
-      const normalizedName = recipe.name.trim().toLowerCase();
-      const exists = await this.recipeModel
-        .exists({ normalizedName, scope: "system", deletedAt: null })
-        .exec();
-      if (!exists) {
-        await this.recipeModel.create({
-          name: recipe.name,
-          normalizedName,
-          mealType: recipe.mealType,
-          sourceType: "system",
-          scope: "system",
-          published: true,
-          createdBy: actorId,
-          updatedBy: actorId,
-          deletedAt: null,
-          version: 0,
-        });
-        affected += 1;
-      }
-    }
+    const result = await this.recipeSeeder.seed(actorId);
+    const affected = result.created + result.updated;
     await this.audit.record(actorId, {
       action: "dev.seed-recipes",
       targetType: "recipe",
-      after: { affected },
+      after: { affected, ...result },
     });
     return { action: "seed-recipes", affected };
   }

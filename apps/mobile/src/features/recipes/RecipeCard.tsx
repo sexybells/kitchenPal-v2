@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { RecipeResponse } from "@kitchenpal/api-contract";
 import { Text, Icon } from "../../ui";
 import { theme } from "../../theme";
-import { dishEmoji } from "./labels";
+import { dishPlaceholder } from "./dish-placeholder";
 
 export interface RecipeCardProps {
   recipe: RecipeResponse;
@@ -14,7 +14,7 @@ export interface RecipeCardProps {
 }
 
 /**
- * Grid card for a recipe: image (or a cooked-dish emoji when none), name,
+ * Grid card for a recipe: image (or a dish placeholder when none), name,
  * cook-time + rating meta, and an optimistic favorite heart. Sized to sit two
  * per row inside a wrapping flex container.
  */
@@ -26,6 +26,7 @@ export function RecipeCard({
   testID,
 }: RecipeCardProps) {
   const { t } = useTranslation();
+  const placeholder = dishPlaceholder(recipe.name, recipe.mealType);
   return (
     <Pressable
       onPress={onPress}
@@ -34,7 +35,14 @@ export function RecipeCard({
       style={styles.card}
       testID={testID}
     >
-      <View style={styles.thumb}>
+      <View
+        style={[
+          styles.thumb,
+          recipe.imageUrl
+            ? null
+            : { backgroundColor: theme.colors[placeholder.background] },
+        ]}
+      >
         {recipe.imageUrl ? (
           <Image
             source={{ uri: recipe.imageUrl }}
@@ -44,7 +52,7 @@ export function RecipeCard({
           />
         ) : (
           <Text variant="display-l" center>
-            {dishEmoji(recipe.mealType)}
+            {placeholder.emoji}
           </Text>
         )}
         <Pressable

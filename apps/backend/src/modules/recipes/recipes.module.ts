@@ -41,6 +41,7 @@ import {
 import { MealPlansService } from "./services/meal-plans.service";
 import { RecipeSelectionService } from "./services/recipe-selection.service";
 import { RecipesService } from "./services/recipes.service";
+import { SystemRecipeSeederService } from "./services/system-recipe-seeder.service";
 
 /**
  * Builds the ordered text-LLM provider chain for suggestions and auto-fill:
@@ -105,6 +106,7 @@ const httpClientProvider = {
     RecipesService,
     MealPlansService,
     RecipeSelectionService,
+    SystemRecipeSeederService,
     RecipeAiService,
     RecipeImportService,
     ExternalSearchService,
@@ -117,7 +119,8 @@ const httpClientProvider = {
     httpClientProvider,
   ],
   // Shopping (a later phase) generates lists from a meal plan's recipes, so it
-  // needs to resolve plans and read recipe ingredients within scope.
-  exports: [MealPlanRepository, RecipeRepository],
+  // needs to resolve plans and read recipe ingredients within scope. The seeder
+  // is exported for the admin dev tool and the standalone seed script.
+  exports: [MealPlanRepository, RecipeRepository, SystemRecipeSeederService],
 })
 export class RecipesModule {}

@@ -272,6 +272,7 @@ function toRecipeResponse(doc: RecipeDoc): AdminRecipeResponse {
   return {
     id: doc.id,
     name: doc.name,
+    imageUrl: doc.imageUrl ?? null,
     scope: scoped.scope,
     ownerUserId: doc.createdBy ? doc.createdBy.toString() : null,
     householdId: scoped.householdId ? scoped.householdId.toString() : null,

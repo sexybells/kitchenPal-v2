@@ -95,3 +95,19 @@ export class Recipe {
 export const RecipeSchema = SchemaFactory.createForClass(Recipe);
 RecipeSchema.plugin(baseSchemaPlugin);
 RecipeSchema.plugin(scopedSchemaPlugin);
+
+// One system recipe per name. Personal/household recipes may freely share a name
+// across owners, so this is scoped to `system` only: it backs the seeder's
+// upsert with a DB constraint, so two instances seeding concurrently at boot
+// cannot both insert the same dish. Soft-deleted rows are excluded so an admin
+// can remove a seeded recipe without blocking a later re-seed.
+// Keyed on (normalizedName, scope) rather than the name alone so the pattern
+// differs from the plain `normalizedName` lookup index above — same guarantee,
+// without Mongoose flagging a duplicate index definition.
+RecipeSchema.index(
+  { normalizedName: 1, scope: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { deletedAt: null, scope: "system" },
+  },
+);

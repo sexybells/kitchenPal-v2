@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { CookMealInput } from "@kitchenpal/api-contract";
 import {
   Screen,
+  ScreenHeader,
   Text,
   Button,
   Icon,
@@ -27,7 +28,8 @@ import {
   IngredientList,
 } from "../src/features/recipes/IngredientChecklist";
 import { RatingStars } from "../src/features/recipes/RatingStars";
-import { dishEmoji, mealTypeLabel } from "../src/features/recipes/labels";
+import { dishPlaceholder } from "../src/features/recipes/dish-placeholder";
+import { mealTypeLabel } from "../src/features/recipes/labels";
 import { neededItemsFromMatch } from "../src/features/recipes/add-missing-to-shopping";
 import { useAddNeededItems } from "../src/features/shopping/hooks";
 import { useCook } from "../src/features/pantry/hooks";
@@ -74,6 +76,7 @@ export default function RecipeDetailScreen() {
   if (recipe.isLoading) {
     return (
       <Screen>
+        <ScreenHeader title={t("meals.unknownRecipe")} onBack={() => router.back()} />
         <LoadingState label={t("common.loading")} />
       </Screen>
     );
@@ -82,6 +85,7 @@ export default function RecipeDetailScreen() {
   if (recipe.isError || !recipe.data) {
     return (
       <Screen>
+        <ScreenHeader title={t("meals.unknownRecipe")} onBack={() => router.back()} />
         <ErrorState
           title={t("states.errorTitle")}
           body={resolveErrorMessage(recipe.error, t) ?? t("states.errorBody")}
@@ -124,7 +128,19 @@ export default function RecipeDetailScreen() {
 
   return (
     <Screen testID="recipe-detail">
-      <View style={styles.hero}>
+      <ScreenHeader title={data.name} onBack={() => router.back()} />
+
+      <View
+        style={[
+          styles.hero,
+          data.imageUrl
+            ? null
+            : {
+                backgroundColor:
+                  theme.colors[dishPlaceholder(data.name, data.mealType).background],
+              },
+        ]}
+      >
         {data.imageUrl ? (
           <Image
             source={{ uri: data.imageUrl }}
@@ -134,14 +150,10 @@ export default function RecipeDetailScreen() {
           />
         ) : (
           <Text variant="display-l" center>
-            {dishEmoji(data.mealType)}
+            {dishPlaceholder(data.name, data.mealType).emoji}
           </Text>
         )}
       </View>
-
-      <Text variant="heading-l" color="text" style={styles.title}>
-        {data.name}
-      </Text>
 
       <View style={styles.metaRow}>
         <Badge label={mealTypeLabel(t, data.mealType)} tone="primary" />
@@ -292,12 +304,6 @@ export default function RecipeDetailScreen() {
           testID="recipe-publish"
         />
       ) : null}
-
-      <Button
-        label={t("common.back")}
-        variant="ghost"
-        onPress={() => router.back()}
-      />
     </Screen>
   );
 }
@@ -344,7 +350,6 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing[8],
   },
   heroImage: { width: "100%", height: "100%" },
-  title: { marginTop: theme.spacing[16] },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",

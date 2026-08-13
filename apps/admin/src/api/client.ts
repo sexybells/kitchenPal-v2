@@ -124,7 +124,12 @@ export class ApiClient {
     isRetry: boolean,
   ): Promise<Response> {
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (options.body !== undefined) {
+    // A FormData body is sent as-is: the browser has to set its own multipart
+    // Content-Type (it carries the boundary), and serializing it would destroy
+    // the file. Everything else stays JSON.
+    const isFormData =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
+    if (options.body !== undefined && !isFormData) {
       headers["Content-Type"] = "application/json";
     }
     const token = this.session.getAccessToken();
@@ -135,7 +140,12 @@ export class ApiClient {
       response = await this.fetchImpl(this.buildUrl(path, options.query), {
         method: options.method ?? (options.body !== undefined ? "POST" : "GET"),
         headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        body:
+          options.body === undefined
+            ? undefined
+            : isFormData
+              ? (options.body as FormData)
+              : JSON.stringify(options.body),
         signal: options.signal,
       });
     } catch (cause) {

@@ -30,12 +30,23 @@ export interface PantryMatchResult {
   matchScore: number;
 }
 
-/** Splits a name into lowercased alphanumeric word tokens. */
+/**
+ * Splits a name into lowercased word tokens.
+ *
+ * The split class is unicode-aware (`\p{L}\p{N}`) because ingredient and pantry
+ * names are Vietnamese-first: an ASCII-only class would treat every accented
+ * character as a separator and shred "thịt ba chỉ" into `th·t·ba·ch`, which both
+ * loses real matches and invents false ones. Diacritics are deliberately KEPT —
+ * stripping them would collapse distinct ingredients ("cá" vs "cà chua",
+ * "bò" vs "bơ"). Names are NFC-normalized first so a decomposed form typed on
+ * one keyboard matches the composed form stored elsewhere.
+ */
 function tokenize(value: string): Set<string> {
   return new Set(
     value
+      .normalize("NFC")
       .toLowerCase()
-      .split(/[^a-z0-9]+/)
+      .split(/[^\p{L}\p{N}]+/u)
       .filter((token) => token.length > 0),
   );
 }
