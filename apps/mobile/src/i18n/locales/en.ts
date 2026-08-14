@@ -93,6 +93,9 @@ export const en: TranslationBundle = {
     statExpiring: "expiring soon",
     statLow: "running low",
     viewAll: "View all",
+    suggestionMatch: "{{available}} on hand · {{needed}} to buy",
+    suggestionsEmpty: "No suggestions yet. Add pantry items for closer matches.",
+    todayEmpty: "No meals planned for today.",
   },
   pantry: {
     title: "Pantry",

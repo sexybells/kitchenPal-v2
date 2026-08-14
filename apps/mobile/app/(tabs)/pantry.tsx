@@ -21,9 +21,14 @@ import {
   ErrorState,
 } from "../../src/ui";
 import { theme } from "../../src/theme";
-import { usePantryItems } from "../../src/features/pantry/hooks";
+import {
+  usePantryItems,
+  useRefillSuggestions,
+} from "../../src/features/pantry/hooks";
 import { PantryItemRow } from "../../src/features/pantry/PantryItemRow";
 import { categoryLabel, groupByCategory } from "../../src/features/pantry/stock";
+import { neededItemsFromRefill } from "../../src/features/recipes/add-missing-to-shopping";
+import { useAddNeededItems } from "../../src/features/shopping/hooks";
 import { resolveErrorMessage } from "../../src/lib/error-message";
 
 /** Pantry tab — grouped items with stock pills, search, and category filters. */
@@ -31,6 +36,8 @@ export default function PantryScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const items = usePantryItems();
+  const refill = useRefillSuggestions();
+  const addToShopping = useAddNeededItems();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
 
@@ -56,6 +63,9 @@ export default function PantryScreen() {
 
   const groups = useMemo(() => groupByCategory(filtered), [filtered]);
   const hasItems = allItems.length > 0;
+  // Running-low items live here, next to the stock pills that flag them, so the
+  // bulk "add them all to the shopping list" action belongs on this screen too.
+  const lowItems = refill.data?.suggestions ?? [];
 
   const renderBody = () => {
     if (items.isLoading) return <LoadingState label={t("common.loading")} />;
@@ -173,6 +183,25 @@ export default function PantryScreen() {
         }
       >
         {renderBody()}
+        {lowItems.length > 0 ? (
+          <>
+            <Button
+              label={t("shopping.addLowToList")}
+              variant="secondary"
+              icon="shopping"
+              loading={addToShopping.isPending}
+              onPress={() =>
+                addToShopping.mutate({ items: neededItemsFromRefill(lowItems) })
+              }
+              testID="pantry-refill-add"
+            />
+            {addToShopping.isSuccess ? (
+              <Text variant="body-m" color="success" testID="pantry-refill-added">
+                {t("shopping.addedToList", { count: lowItems.length })}
+              </Text>
+            ) : null}
+          </>
+        ) : null}
         {hasItems ? (
           <Button
             label={t("pantry.cookFromPantry")}

@@ -29,6 +29,8 @@ export const recipeKeys = {
   detail: (id: string) => ["recipes", "detail", id] as const,
   comments: (id: string) => ["recipes", "comments", id] as const,
   pantryMatch: (id: string) => ["recipes", "pantry-match", id] as const,
+  pantrySuggestions: (limit: number) =>
+    ["recipes", "pantry-suggestions", limit] as const,
 };
 
 export const mealPlanKeys = {
@@ -66,6 +68,20 @@ export const useRecipe = (id: string | null) =>
     queryKey: recipeKeys.detail(id ?? "none"),
     queryFn: () => recipesApi.getById(id as string),
     enabled: id !== null,
+  });
+
+/**
+ * Recipes ranked against what the pantry actually holds, for the home screen.
+ *
+ * The endpoint is a POST because it takes a body, but this is a READ — nothing
+ * is created — so it is modelled as a query and participates in caching and
+ * invalidation like every other read. Suggestions shift as the pantry changes,
+ * hence the shared `recipes` key prefix: a pantry write already invalidates it.
+ */
+export const useSuggestionsFromPantry = (limit: number) =>
+  useQuery({
+    queryKey: recipeKeys.pantrySuggestions(limit),
+    queryFn: () => recipesApi.suggestFromPantry({ limit }),
   });
 
 export const useRecipeComments = (id: string | null) =>

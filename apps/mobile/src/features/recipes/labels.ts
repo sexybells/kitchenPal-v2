@@ -61,6 +61,15 @@ export const startOfWeekUtc = (date: Date): Date => {
   return utc;
 };
 
+/**
+ * Today as a `MealPlanSlot.dayOfWeek` index (Monday = 0), matching the plan's
+ * own numbering. Read in LOCAL time on purpose: a plan slot is "Tuesday dinner"
+ * to the cook standing in the kitchen, so late-evening in a UTC+7 timezone must
+ * still be today's row, not tomorrow's.
+ */
+export const todayOfWeek = (date: Date = new Date()): number =>
+  (date.getDay() + 6) % 7;
+
 /** Render a 1..5 rating into filled/empty star booleans for display. */
 export const starFill = (rating: number): boolean[] =>
   [1, 2, 3, 4, 5].map((position) => rating >= position - 0.25);

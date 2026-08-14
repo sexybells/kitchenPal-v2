@@ -6,7 +6,6 @@ import {
   Screen,
   Text,
   Card,
-  Button,
   Avatar,
   Badge,
   EmptyState,
@@ -20,11 +19,12 @@ import {
   usePantryItems,
   useRefillSuggestions,
 } from "../../src/features/pantry/hooks";
-import { PantryItemRow } from "../../src/features/pantry/PantryItemRow";
-import { StockPill } from "../../src/features/pantry/StockPill";
 import { expiryInfo } from "../../src/features/pantry/stock";
-import { useAddNeededItems } from "../../src/features/shopping/hooks";
-import { neededItemsFromRefill } from "../../src/features/recipes/add-missing-to-shopping";
+import {
+  useCurrentMealPlan,
+  useSuggestionsFromPantry,
+} from "../../src/features/recipes/hooks";
+import { mealTypeLabel, todayOfWeek } from "../../src/features/recipes/labels";
 
 interface MenuAction {
   icon: IconName;
@@ -32,14 +32,23 @@ interface MenuAction {
   label: string;
 }
 
-/** Home dashboard — pantry stats, expiring-soon, and running-low widgets. */
+/** How many pantry-ranked suggestions the home screen shows. */
+const SUGGESTION_COUNT = 3;
+
+/**
+ * Home dashboard — pantry stats, today's planned meals, and recipe suggestions
+ * ranked against the pantry. The stat row stays the entry point to the pantry
+ * (including its expiring/running-low detail); home answers "what do I cook
+ * today?" rather than restating those lists.
+ */
 export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const me = useMe();
   const items = usePantryItems();
   const refill = useRefillSuggestions();
-  const addToShopping = useAddNeededItems();
+  const plan = useCurrentMealPlan();
+  const suggestions = useSuggestionsFromPantry(SUGGESTION_COUNT);
 
   const menuActions: MenuAction[] = [
     { icon: "spending", href: "/spending", label: t("menu.spending") },
@@ -51,12 +60,6 @@ export default function HomeScreen() {
   const greetingName = me.data?.displayName ?? "";
   const allItems = useMemo(() => items.data ?? [], [items.data]);
 
-  // The list arrives sorted by expiry (soonest first, no-expiry last), so the
-  // first few dated items are exactly the "expiring soon" widget.
-  const expiringSoon = useMemo(
-    () => allItems.filter((item) => item.expiryDate).slice(0, 3),
-    [allItems],
-  );
   const expiringCount = useMemo(
     () =>
       allItems.filter((item) => {
@@ -65,7 +68,14 @@ export default function HomeScreen() {
       }).length,
     [allItems],
   );
-  const suggestions = refill.data?.suggestions ?? [];
+  const lowCount = refill.data?.suggestions.length ?? 0;
+
+  // A plan holds every day of the week; home shows only today's slots.
+  const todaySlots = useMemo(() => {
+    const today = todayOfWeek();
+    return (plan.data?.slots ?? []).filter((slot) => slot.dayOfWeek === today);
+  }, [plan.data]);
+  const suggested = suggestions.data?.suggestions ?? [];
 
   return (
     <Screen>
@@ -129,65 +139,97 @@ export default function HomeScreen() {
       >
         <Stat value={allItems.length} label={t("home.statItems")} />
         <Stat value={expiringCount} label={t("home.statExpiring")} tone="warning" />
-        <Stat value={suggestions.length} label={t("home.statLow")} tone="danger" />
+        <Stat value={lowCount} label={t("home.statLow")} tone="danger" />
       </Pressable>
 
-      <Section title={t("home.expiringSoon")}>
-        {items.isLoading ? (
+      <Section title={t("home.todaysMeals")}>
+        {plan.isLoading ? (
           <Card elevated={false} background="surface-alt">
             <LoadingState />
           </Card>
-        ) : expiringSoon.length === 0 ? (
+        ) : todaySlots.length === 0 ? (
+          // No plan for this week (the query 404s) or none of its slots fall on
+          // today — either way the fix is the same: go make a plan.
           <Card elevated={false} background="surface-alt">
-            <EmptyState title={t("states.emptyTitle")} icon="leaf" />
+            <EmptyState
+              title={plan.data ? t("home.todayEmpty") : t("meals.noPlanTitle")}
+              body={t("meals.noPlanBody")}
+              icon="meals"
+              testID="home-today-empty"
+            />
           </Card>
         ) : (
           <Card>
-            {expiringSoon.map((item) => (
-              <PantryItemRow
-                key={item.id}
-                item={item}
-                onPress={() => router.push(`/pantry-item?id=${item.id}`)}
-                testID={`home-expiring-${item.id}`}
-              />
+            {todaySlots.map((slot) => (
+              <Pressable
+                key={slot.id}
+                accessibilityRole="button"
+                accessibilityLabel={slot.recipeName ?? t("meals.addToSlot")}
+                onPress={() =>
+                  router.push(
+                    slot.recipeId ? `/recipe?id=${slot.recipeId}` : "/meals",
+                  )
+                }
+                style={styles.row}
+                testID={`home-today-${slot.mealType}`}
+              >
+                <Text variant="label-s" color="text-muted" style={styles.rowLabel}>
+                  {mealTypeLabel(t, slot.mealType)}
+                </Text>
+                <Text
+                  variant="title"
+                  color={slot.recipeName ? "text" : "text-subtle"}
+                  numberOfLines={1}
+                  style={styles.rowValue}
+                >
+                  {slot.recipeName ?? t("meals.addToSlot")}
+                </Text>
+                <Icon name="chevron-right" size={18} color="text-subtle" />
+              </Pressable>
             ))}
           </Card>
         )}
       </Section>
 
-      <Section title={t("home.runningLow")}>
-        {suggestions.length === 0 ? (
+      <Section title={t("home.suggestions")}>
+        {suggestions.isLoading ? (
           <Card elevated={false} background="surface-alt">
-            <EmptyState title={t("cook.refillEmpty")} icon="shopping" />
+            <LoadingState />
+          </Card>
+        ) : suggested.length === 0 ? (
+          <Card elevated={false} background="surface-alt">
+            <EmptyState
+              title={t("home.suggestionsEmpty")}
+              icon="meals"
+              testID="home-suggestions-empty"
+            />
           </Card>
         ) : (
-          <>
-            <Card>
-              {suggestions.slice(0, 4).map((suggestion) => (
-                <View key={suggestion.pantryItemId} style={styles.lowRow}>
-                  <Text variant="title" color="text" numberOfLines={1} style={styles.lowName}>
+          <Card>
+            {suggested.map((suggestion) => (
+              <Pressable
+                key={suggestion.recipeId}
+                accessibilityRole="button"
+                accessibilityLabel={suggestion.name}
+                onPress={() => router.push(`/recipe?id=${suggestion.recipeId}`)}
+                style={styles.row}
+                testID={`home-suggestion-${suggestion.recipeId}`}
+              >
+                <View style={styles.rowValue}>
+                  <Text variant="title" color="text" numberOfLines={1}>
                     {suggestion.name}
                   </Text>
-                  <StockPill state={suggestion.stockState} />
+                  <Text variant="caption" color="text-muted">
+                    {t("home.suggestionMatch", {
+                      available: suggestion.availableCount,
+                      needed: suggestion.neededCount,
+                    })}
+                  </Text>
                 </View>
-              ))}
-            </Card>
-            <Button
-              label={t("shopping.addLowToList")}
-              variant="secondary"
-              icon="shopping"
-              loading={addToShopping.isPending}
-              onPress={() =>
-                addToShopping.mutate({ items: neededItemsFromRefill(suggestions) })
-              }
-              testID="home-refill-add"
-            />
-            {addToShopping.isSuccess ? (
-              <Text variant="body-m" color="success" testID="home-refill-added">
-                {t("shopping.addedToList", { count: suggestions.length })}
-              </Text>
-            ) : null}
-          </>
+                <Icon name="chevron-right" size={18} color="text-subtle" />
+              </Pressable>
+            ))}
+          </Card>
         )}
       </Section>
     </Screen>
@@ -270,12 +312,13 @@ const styles = StyleSheet.create({
   },
   stat: { flex: 1, alignItems: "center", gap: theme.spacing[4] },
   section: { marginTop: theme.spacing[28], gap: theme.spacing[12] },
-  lowRow: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: theme.spacing[12],
     paddingVertical: theme.spacing[12],
   },
-  lowName: { flex: 1 },
+  // Fixed width so the meal labels line up into a column.
+  rowLabel: { width: 56 },
+  rowValue: { flex: 1, gap: theme.spacing[4] },
 });

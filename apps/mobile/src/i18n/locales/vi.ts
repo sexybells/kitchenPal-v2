@@ -91,6 +91,9 @@ export const vi = {
     statExpiring: "sắp hết hạn",
     statLow: "sắp hết",
     viewAll: "Xem tất cả",
+    suggestionMatch: "Có {{available}} · cần mua {{needed}}",
+    suggestionsEmpty: "Chưa có gợi ý nào. Thêm nguyên liệu vào tủ đồ để nhận gợi ý sát hơn.",
+    todayEmpty: "Hôm nay chưa có bữa nào trong thực đơn.",
   },
   pantry: {
     title: "Tủ đồ",
