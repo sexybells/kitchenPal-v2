@@ -4,6 +4,7 @@
  * (admin), and an RN theme object (mobile).
  */
 export * from "./colors.js";
+export * from "./contrast.js";
 export * from "./typography.js";
 export * from "./spacing.js";
 export { tailwindPreset } from "./tailwind-preset.js";

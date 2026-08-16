@@ -1,54 +1,65 @@
 /**
  * KitchenPal color tokens — "Warm & Cozy", Light mode.
- * Canonical source: Figma `WR7dg0wp3v61Fu0ecZURyN` (page "🎨 Foundations").
  *
- * Values marked (derived) are pale tints generated to match the existing
- * `*-soft` pattern (e.g. primary #E8663D -> primary-soft #FBE4D9) because the
- * Figma desktop MCP could not be read without a live layer selection.
- * Reconcile these four against Figma when the Foundations frame is selected.
+ * THIS FILE IS THE SOURCE OF TRUTH. The palette began in Figma
+ * (`WR7dg0wp3v61Fu0ecZURyN`) but was re-derived here on 2026-08-15 to fix
+ * measured accessibility failures — the Figma values put secondary text at
+ * 3.78:1, muted text at 2.21:1, and white-on-primary buttons at 3.28:1, all
+ * below WCAG AA, and left cards at 1.04:1 against the page (invisible).
+ * See `docs/superpowers/specs/2026-08-15-token-restyle-design.md`.
+ *
+ * Every pair the UI actually renders is locked by contrast invariants in
+ * `__tests__/tokens.test.ts`. Change a value and the test tells you whether the
+ * combination is still legible — that, not a hex match, is the contract.
  *
  * Dark mode is structurally supported (same keys) and will be added as a
  * `darkColors` map in a later pass — the design is "dark-ready", not yet dark.
  */
 export const colors = {
-  // Brand — primary (warm terracotta)
-  primary: "#E8663D",
-  "primary-hover": "#D2542D",
-  "primary-soft": "#FBE4D9",
+  // Brand — primary (warm terracotta). Darkened until white label text on a
+  // filled button clears 4.5:1; the hue still reads as the original brand.
+  primary: "#C9502A",
+  "primary-hover": "#A83F1F",
+  "primary-soft": "#FBE0D4",
 
   // Brand — secondary (sage green)
-  secondary: "#5E9A72",
-  "secondary-soft": "#E1EDE3",
+  secondary: "#3F7D55",
+  "secondary-soft": "#DDEBE1",
 
-  // Brand — accent (golden)
-  accent: "#F4B740",
-  "accent-soft": "#FCEECB",
+  // Brand — accent (amber). Deeper than a bright gold because it is used as INK
+  // — star ratings, badge labels — where #F4B740 measured ~1.9:1 on white.
+  accent: "#B87400",
+  "accent-soft": "#FBEBCB",
 
-  // Semantic status
-  success: "#3E9B6B",
-  "success-soft": "#DDEFE4", // (derived)
-  warning: "#E8A73C",
-  "warning-soft": "#FBEBCF", // (derived)
-  danger: "#E0503F",
-  "danger-soft": "#FBDED9", // (derived)
-  info: "#4E82D6",
-  "info-soft": "#DCE7F8", // (derived)
+  // Semantic status. Same reasoning as accent: these appear as text and icons,
+  // not only as fills, so each clears 4.5:1 on `surface`.
+  success: "#2F7D52",
+  "success-soft": "#DDEFE4",
+  warning: "#8A5A00",
+  "warning-soft": "#FBEBCF",
+  danger: "#C0392B",
+  "danger-soft": "#FBDED9",
+  info: "#2C5FA8",
+  "info-soft": "#DCE7F8",
 
-  // Surfaces (warm off-white stack)
-  bg: "#FFF9F3",
+  // Surfaces. Ordered as a real stack: `bg` is the floor, `surface` sits on it
+  // (1.21:1 — enough to see a card edge), `surface-alt` is a muted raised
+  // panel, and `surface-sunken` recedes below the floor.
+  bg: "#F1E8DD",
   surface: "#FFFFFF",
-  "surface-alt": "#F7F1EA",
-  "surface-sunken": "#F1E9DF",
+  "surface-alt": "#FAF5EF",
+  "surface-sunken": "#E4D7C7",
 
-  // Text
-  text: "#2B2420",
-  "text-muted": "#8A7E74",
-  "text-subtle": "#B4A99E",
+  // Text — three steps, all ≥4.5:1 on both `bg` and `surface`.
+  text: "#241E1A",
+  "text-muted": "#6A5D53",
+  "text-subtle": "#736659",
   "text-inverse": "#FFFFFF",
 
-  // Borders
-  border: "#EBE1D6",
-  "border-strong": "#DBCFC0",
+  // Borders. `border` is a visible hairline; `border-strong` clears 3:1 so it
+  // can carry input boundaries and focus rings.
+  border: "#CDBCA8",
+  "border-strong": "#9E8B76",
 } as const;
 
 export type ColorToken = keyof typeof colors;
