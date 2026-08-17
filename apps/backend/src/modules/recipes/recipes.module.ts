@@ -4,6 +4,7 @@ import { APP_CONFIG, type AppConfig } from "../../config/env.schema";
 import { AuthModule } from "../auth/auth.module";
 import { LogsModule } from "../logs/logs.module";
 import { PantryModule } from "../pantry/pantry.module";
+import { UploadsModule } from "../uploads/uploads.module";
 import { ExternalSearchService } from "./ai/external-search.service";
 import { GeminiRecipeProvider } from "./ai/gemini-recipe.provider";
 import { OpenAiRecipeProvider } from "./ai/openai-recipe.provider";
@@ -41,6 +42,7 @@ import {
 import { MealPlansService } from "./services/meal-plans.service";
 import { RecipeSelectionService } from "./services/recipe-selection.service";
 import { RecipesService } from "./services/recipes.service";
+import { SystemRecipeImageService } from "./services/system-recipe-image.service";
 import { SystemRecipeSeederService } from "./services/system-recipe-seeder.service";
 
 /**
@@ -93,6 +95,9 @@ const httpClientProvider = {
     AuthModule,
     LogsModule,
     PantryModule,
+    // Bundled dish photography goes through the same storage transport as every
+    // upload, so the seeded recipes never serve images from the source tree.
+    UploadsModule,
     MongooseModule.forFeature([
       { name: Recipe.name, schema: RecipeSchema },
       { name: RecipePreference.name, schema: RecipePreferenceSchema },
@@ -107,6 +112,7 @@ const httpClientProvider = {
     MealPlansService,
     RecipeSelectionService,
     SystemRecipeSeederService,
+    SystemRecipeImageService,
     RecipeAiService,
     RecipeImportService,
     ExternalSearchService,
@@ -121,6 +127,11 @@ const httpClientProvider = {
   // Shopping (a later phase) generates lists from a meal plan's recipes, so it
   // needs to resolve plans and read recipe ingredients within scope. The seeder
   // is exported for the admin dev tool and the standalone seed script.
-  exports: [MealPlanRepository, RecipeRepository, SystemRecipeSeederService],
+  exports: [
+    MealPlanRepository,
+    RecipeRepository,
+    SystemRecipeSeederService,
+    SystemRecipeImageService,
+  ],
 })
 export class RecipesModule {}

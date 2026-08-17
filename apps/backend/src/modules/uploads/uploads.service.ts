@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import type { AvatarUploadResponse } from "@kitchenpal/api-contract";
 import { ErrorCode } from "../../common/http/error-codes";
+import { contentTypeFor, detectImageExtension } from "./image-type";
 import { UserRepository } from "../auth/repositories/user.repository";
 import {
   UploadRepository,
@@ -28,44 +29,6 @@ export interface UploadedImage {
   buffer: Buffer;
   mimetype: string;
   size: number;
-}
-
-/**
- * Identifies an image from its leading magic bytes, not the client-supplied
- * content type (which is attacker-controlled). Returns the canonical extension,
- * or null when the bytes are not a supported image — so a mislabeled or
- * non-image payload cannot be stored under an image key.
- */
-function detectImageExtension(buffer: Buffer): "jpg" | "png" | "webp" | null {
-  if (
-    buffer.length >= 3 &&
-    buffer[0] === 0xff &&
-    buffer[1] === 0xd8 &&
-    buffer[2] === 0xff
-  ) {
-    return "jpg";
-  }
-  if (
-    buffer.length >= 8 &&
-    buffer[0] === 0x89 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x4e &&
-    buffer[3] === 0x47 &&
-    buffer[4] === 0x0d &&
-    buffer[5] === 0x0a &&
-    buffer[6] === 0x1a &&
-    buffer[7] === 0x0a
-  ) {
-    return "png";
-  }
-  if (
-    buffer.length >= 12 &&
-    buffer.toString("ascii", 0, 4) === "RIFF" &&
-    buffer.toString("ascii", 8, 12) === "WEBP"
-  ) {
-    return "webp";
-  }
-  return null;
 }
 
 /**
@@ -114,7 +77,7 @@ export class UploadsService {
       });
     }
 
-    const contentType = extension === "jpg" ? "image/jpeg" : `image/${extension}`;
+    const contentType = contentTypeFor(extension);
     const key = `avatars/${userId}-${randomUUID()}.${extension}`;
     const stored = await this.storage.save(key, file.buffer, contentType);
     await this.users.updateWithVersion(
@@ -185,8 +148,7 @@ export class UploadsService {
         message: "Image must be a JPEG, PNG, or WebP image",
       });
     }
-    const contentType =
-      extension === "jpg" ? "image/jpeg" : `image/${extension}`;
+    const contentType = contentTypeFor(extension);
     const key = `${kind}/${userId}-${randomUUID()}.${extension}`;
     const stored = await this.storage.save(key, file.buffer, contentType);
     await this.recordUpload(stored, kind, contentType, file.size, userId);
