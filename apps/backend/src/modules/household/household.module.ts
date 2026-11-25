@@ -98,6 +98,12 @@ const pushSenderProvider = {
     ChatGateway,
     pushSenderProvider,
   ],
-  exports: [MembershipVerifier, ChatSpendingEvents],
+  // The reminder job resolves a user's household and sends through notify().
+  exports: [
+    MembershipVerifier,
+    ChatSpendingEvents,
+    HouseholdMemberRepository,
+    NotificationService,
+  ],
 })
 export class HouseholdModule {}

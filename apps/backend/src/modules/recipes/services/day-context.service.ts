@@ -16,6 +16,11 @@ import type { SelectionContext } from "./recipe-selection.service";
 
 export const DEFAULT_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
+/** The stored zone when valid, else {@link DEFAULT_TIME_ZONE}. Pure: no logging. */
+export function resolveTimeZone(stored: string | null | undefined): string {
+  return stored && isValidTimeZone(stored) ? stored : DEFAULT_TIME_ZONE;
+}
+
 /** The user's local day: contract block plus the zone and solar date it came from. */
 export type DayContext = SuggestionDay & {
   timeZone: string;
@@ -70,16 +75,14 @@ export class DayContextService {
   }
 
   private resolveZone(userId: string, stored: string | undefined): string {
-    if (stored && isValidTimeZone(stored)) {
-      return stored;
-    }
-    if (stored) {
+    const zone = resolveTimeZone(stored);
+    if (stored && zone !== stored) {
       this.logger.warn(
         `Invalid stored time zone "${stored}" for user ${userId}; using ${DEFAULT_TIME_ZONE}`,
         DayContextService.name,
       );
     }
-    return DEFAULT_TIME_ZONE;
+    return zone;
   }
 }
 

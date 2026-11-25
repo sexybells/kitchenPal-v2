@@ -20,6 +20,7 @@ import { HouseholdModule } from "./modules/household/household.module";
 import { LogsModule } from "./modules/logs/logs.module";
 import { PantryModule } from "./modules/pantry/pantry.module";
 import { RecipesModule } from "./modules/recipes/recipes.module";
+import { RemindersModule } from "./modules/reminders/reminders.module";
 import { ShoppingModule } from "./modules/shopping/shopping.module";
 import { SubscriptionsModule } from "./modules/subscriptions/subscriptions.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
@@ -51,6 +52,7 @@ import { UsersModule } from "./modules/users/users.module";
     ShoppingModule,
     SubscriptionsModule,
     AdminModule,
+    RemindersModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

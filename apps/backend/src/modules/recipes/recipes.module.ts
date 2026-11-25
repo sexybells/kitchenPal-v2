@@ -134,6 +134,8 @@ const httpClientProvider = {
   // is exported for the admin dev tool and the standalone seed script.
   exports: [
     DayContextService,
+    // The reminder job picks its dishes with the same ranking (useAi: false).
+    RecipeSelectionService,
     MealPlanRepository,
     RecipeRepository,
     SystemRecipeSeederService,

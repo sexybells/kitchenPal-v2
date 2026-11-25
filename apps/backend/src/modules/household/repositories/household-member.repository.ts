@@ -63,4 +63,15 @@ export class HouseholdMemberRepository extends BaseRepository<HouseholdMemberEnt
       .sort({ createdAt: 1 })
       .exec();
   }
+
+  /**
+   * The user's most recently joined active membership, or null. Used where no
+   * request token names an active household (the reminder job).
+   */
+  latestActiveForUser(userId: string): Promise<MemberDoc | null> {
+    return this.model
+      .findOne({ userId, status: "active", deletedAt: null })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
 }

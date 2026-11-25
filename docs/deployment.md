@@ -80,6 +80,13 @@ Upstash Redis integration (`fly redis create`), Upstash directly, or
 Railway/Redis Cloud. Set `REDIS_URL` to the provided connection string (use
 `rediss://` for TLS where offered).
 
+The daily meal reminder also runs on Redis: at boot the backend registers a
+BullMQ job scheduler (`meal-reminders-tick` on queue `meal-reminders`) that
+ticks hourly at :00, and each tick pushes to users whose local time is 16:00
+(at most one reminder per user per local date, push only, never email). The
+schedule is shared, so several instances still send once. Without Redis the
+scheduler logs a warning and no reminders go out; HTTP keeps serving.
+
 ## Environment variables
 
 ### Backend (`apps/backend`)
