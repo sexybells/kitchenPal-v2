@@ -2,12 +2,13 @@ import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type { Locale } from "@kitchenpal/api-contract";
-import { Screen, ScreenHeader, Text, Button, Card, ListRow, Badge, Icon } from "../src/ui";
+import { Screen, ScreenHeader, Text, Button, Card, ListRow, Badge, Icon, Toggle } from "../src/ui";
 import { theme } from "../src/theme";
 import { useUiStore } from "../src/store/ui";
 import { useSessionStore } from "../src/store/session";
 import { SUPPORTED_LOCALES, changeLocale } from "../src/i18n";
 import { useMySubscription } from "../src/features/subscription/hooks";
+import { useSettings, useUpdateSettings } from "../src/features/settings/hooks";
 
 const LOCALE_LABEL_KEY: Record<Locale, "language.vietnamese" | "language.english"> = {
   vi: "language.vietnamese",
@@ -23,6 +24,9 @@ export default function SettingsScreen() {
   const signOut = useSessionStore((state) => state.signOut);
   const mine = useMySubscription();
   const isPro = mine.data?.tier === "pro";
+  const settings = useSettings();
+  const updateSettings = useUpdateSettings();
+  const loaded = settings.data !== undefined;
 
   const selectLocale = async (next: Locale) => {
     setLocale(next);
@@ -49,6 +53,42 @@ export default function SettingsScreen() {
             />
           }
           testID="settings-subscription"
+        />
+      </Card>
+
+      <Text variant="label-m" color="text-muted" style={styles.sectionLabel}>
+        {t("settings.notificationsTitle")}
+      </Text>
+      <Card padded={false} style={styles.card}>
+        <ListRow
+          title={t("settings.vegetarianDays")}
+          leadingIcon="leaf"
+          trailing={
+            <Toggle
+              testID="settings-vegetarian-toggle"
+              accessibilityLabel={t("settings.vegetarianDays")}
+              value={settings.data?.observesVegetarianDays ?? false}
+              disabled={!loaded}
+              onValueChange={(value) =>
+                updateSettings.mutate({ observesVegetarianDays: value })
+              }
+            />
+          }
+        />
+        <ListRow
+          title={t("settings.mealReminders")}
+          leadingIcon="bell"
+          trailing={
+            <Toggle
+              testID="settings-meal-reminders-toggle"
+              accessibilityLabel={t("settings.mealReminders")}
+              value={settings.data?.notifications.mealReminders ?? false}
+              disabled={!loaded}
+              onValueChange={(value) =>
+                updateSettings.mutate({ notifications: { mealReminders: value } })
+              }
+            />
+          }
         />
       </Card>
 

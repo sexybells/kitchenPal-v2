@@ -266,6 +266,11 @@ export const vi = {
     stepPlaceholder: "Bước {{number}}",
     addStep: "Thêm bước",
   },
+  settings: {
+    notificationsTitle: "Thông báo",
+    vegetarianDays: "Ăn chay mùng 1 & rằm",
+    mealReminders: "Gợi ý bữa ăn lúc 16h",
+  },
   menu: {
     spending: "Chi tiêu",
     household: "Gia đình & Trò chuyện",

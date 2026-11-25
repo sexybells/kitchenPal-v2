@@ -23,6 +23,7 @@ import {
   registerPushToken,
   routeForPushResponse,
 } from "../src/features/notifications/push";
+import { useTimeZoneSync } from "../src/features/settings/hooks";
 import { theme } from "../src/theme";
 
 void SplashScreen.preventAutoHideAsync();
@@ -84,6 +85,7 @@ function usePushNotifications() {
 function RootNavigator() {
   useAuthRedirect();
   usePushNotifications();
+  useTimeZoneSync();
   return (
     <Stack
       screenOptions={{

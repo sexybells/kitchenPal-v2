@@ -266,6 +266,11 @@ export const en: TranslationBundle = {
     stepPlaceholder: "Step {{number}}",
     addStep: "Add step",
   },
+  settings: {
+    notificationsTitle: "Notifications",
+    vegetarianDays: "Vegetarian on lunar 1st & 15th",
+    mealReminders: "Meal ideas at 4 pm",
+  },
   menu: {
     spending: "Spending",
     household: "Household & Chat",
