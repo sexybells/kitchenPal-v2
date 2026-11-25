@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { ConflictException, Injectable } from "@nestjs/common";
 import type {
   BiometricSettingInput,
   Locale,
@@ -9,6 +9,7 @@ import type {
   UserSettingsResponse,
 } from "@kitchenpal/api-contract";
 import type { HydratedDocument } from "mongoose";
+import { ErrorCode } from "../../common/http/error-codes";
 import type { ScopeContext } from "../../common/scope/scope-context";
 import { UserRepository } from "../auth/repositories/user.repository";
 import {
@@ -39,6 +40,19 @@ function toSettingsResponse(
   };
 }
 
+/** Whether an error is the repository's optimistic-lock 409 (stale version). */
+function isOptimisticLockConflict(error: unknown): boolean {
+  if (!(error instanceof ConflictException)) {
+    return false;
+  }
+  const response = error.getResponse();
+  return (
+    typeof response === "object" &&
+    response !== null &&
+    (response as { code?: string }).code === ErrorCode.OPTIMISTIC_LOCK_CONFLICT
+  );
+}
+
 function toTipsResponse(
   doc: HydratedDocument<TipsStateEntity>,
 ): TipsStateResponse {
@@ -67,40 +81,35 @@ export class UsersService {
     scope: ScopeContext,
     input: UpdateSettingsInput,
   ): Promise<UserSettingsResponse> {
-    const doc = await this.getOrCreateSettings(scope);
-    const update: Record<string, unknown> = {};
-    if (input.locale) {
-      update.locale = input.locale;
-    }
-    if (input.measurementSystem) {
-      update.measurementSystem = input.measurementSystem;
-    }
-    if (input.theme) {
-      update.theme = input.theme;
-    }
-    if (input.notifications) {
-      const current = doc.notifications;
-      update.notifications = {
-        push: input.notifications.push ?? current.push,
-        email: input.notifications.email ?? current.email,
-        mealReminders: input.notifications.mealReminders ?? current.mealReminders,
-        shoppingReminders:
-          input.notifications.shoppingReminders ?? current.shoppingReminders,
-      };
-    }
-    if (input.observesVegetarianDays !== undefined) {
-      update.observesVegetarianDays = input.observesVegetarianDays;
-    }
-    if (input.timeZone) {
-      update.timeZone = input.timeZone;
-    }
-
-    const updated = await this.settings.updateWithVersion(
-      scope,
-      doc.id,
-      doc.version,
-      update,
-    );
+    const updated = await this.writeSettings(scope, (doc) => {
+      const update: Record<string, unknown> = {};
+      if (input.locale) {
+        update.locale = input.locale;
+      }
+      if (input.measurementSystem) {
+        update.measurementSystem = input.measurementSystem;
+      }
+      if (input.theme) {
+        update.theme = input.theme;
+      }
+      if (input.notifications) {
+        const current = doc.notifications;
+        update.notifications = {
+          push: input.notifications.push ?? current.push,
+          email: input.notifications.email ?? current.email,
+          mealReminders: input.notifications.mealReminders ?? current.mealReminders,
+          shoppingReminders:
+            input.notifications.shoppingReminders ?? current.shoppingReminders,
+        };
+      }
+      if (input.observesVegetarianDays !== undefined) {
+        update.observesVegetarianDays = input.observesVegetarianDays;
+      }
+      if (input.timeZone) {
+        update.timeZone = input.timeZone;
+      }
+      return update;
+    });
     if (input.locale) {
       await this.syncUserLocale(scope.userId, input.locale);
     }
@@ -122,16 +131,14 @@ export class UsersService {
     scope: ScopeContext,
     input: PushTokenInput,
   ): Promise<UserSettingsResponse> {
-    const doc = await this.getOrCreateSettings(scope);
     // Replace any existing entry with the same token so re-registration on a new
     // platform stays idempotent and never duplicates a device.
-    const pushTokens = [
-      ...doc.pushTokens.filter((entry) => entry.token !== input.token),
-      { token: input.token, platform: input.platform },
-    ];
-    const updated = await this.settings.updateWithVersion(scope, doc.id, doc.version, {
-      pushTokens,
-    });
+    const updated = await this.writeSettings(scope, (doc) => ({
+      pushTokens: [
+        ...doc.pushTokens.filter((entry) => entry.token !== input.token),
+        { token: input.token, platform: input.platform },
+      ],
+    }));
     return toSettingsResponse(updated);
   }
 
@@ -177,6 +184,31 @@ export class UsersService {
     return this.settings.create(scope, {
       locale: user?.locale ?? "vi",
     } as Partial<UserSettingsEntity>);
+  }
+
+  /**
+   * Versioned settings write that re-reads and re-applies once on an
+   * optimistic-lock conflict. At app launch the time zone sync and the push
+   * token registration race on the same document; both are partial merges
+   * rebuilt from the fresh document, so one retry is safe. A second conflict
+   * still surfaces as 409.
+   */
+  private async writeSettings(
+    scope: ScopeContext,
+    buildUpdate: (doc: HydratedDocument<UserSettingsEntity>) => Record<string, unknown>,
+  ): Promise<HydratedDocument<UserSettingsEntity>> {
+    const write = async () => {
+      const doc = await this.getOrCreateSettings(scope);
+      return this.settings.updateWithVersion(scope, doc.id, doc.version, buildUpdate(doc));
+    };
+    try {
+      return await write();
+    } catch (error) {
+      if (!isOptimisticLockConflict(error)) {
+        throw error;
+      }
+      return write();
+    }
   }
 
   private async getOrCreateTips(
