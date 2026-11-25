@@ -7,6 +7,8 @@ export type BadgeTone = "neutral" | "primary" | "success" | "warning" | "danger"
 export interface BadgeProps {
   label: string;
   tone?: BadgeTone;
+  /** Upper-case the label (default). Turn off for sentence-like copy. */
+  uppercase?: boolean;
   testID?: string;
 }
 
@@ -21,7 +23,7 @@ const TONES: Record<BadgeTone, { bg: ColorToken; fg: ColorToken }> = {
 };
 
 /** Compact status label — e.g. "Expiring soon", stock state, unread count. */
-export function Badge({ label, tone = "neutral", testID }: BadgeProps) {
+export function Badge({ label, tone = "neutral", uppercase = true, testID }: BadgeProps) {
   const palette = TONES[tone];
   return (
     <View
@@ -29,7 +31,7 @@ export function Badge({ label, tone = "neutral", testID }: BadgeProps) {
       style={[styles.badge, { backgroundColor: theme.colors[palette.bg] }]}
     >
       <Text variant="overline" color={palette.fg}>
-        {label.toUpperCase()}
+        {uppercase ? label.toUpperCase() : label}
       </Text>
     </View>
   );

@@ -25,6 +25,8 @@ import {
   useSuggestionsFromPantry,
 } from "../../src/features/recipes/hooks";
 import { mealTypeLabel, todayOfWeek } from "../../src/features/recipes/labels";
+import { lunarDayLabel } from "../../src/features/recipes/lunar-label";
+import { rescueChipText } from "../../src/features/recipes/rescue-label";
 
 interface MenuAction {
   icon: IconName;
@@ -76,6 +78,7 @@ export default function HomeScreen() {
     return (plan.data?.slots ?? []).filter((slot) => slot.dayOfWeek === today);
   }, [plan.data]);
   const suggested = suggestions.data?.suggestions ?? [];
+  const day = suggestions.data?.day;
 
   return (
     <Screen>
@@ -192,6 +195,11 @@ export default function HomeScreen() {
       </Section>
 
       <Section title={t("home.suggestions")}>
+        {day?.vegetarianPriority ? (
+          <Text variant="label-s" color="text-muted" testID="home-veg-day">
+            {t("home.vegDayPriority", { lunar: lunarDayLabel(t, day.lunar) })}
+          </Text>
+        ) : null}
         {suggestions.isLoading ? (
           <Card elevated={false} background="surface-alt">
             <LoadingState />
@@ -225,6 +233,29 @@ export default function HomeScreen() {
                       needed: suggestion.neededCount,
                     })}
                   </Text>
+                  {suggestion.isVegetarian || suggestion.rescues.length > 0 ? (
+                    <View style={styles.chips}>
+                      {suggestion.isVegetarian ? (
+                        <Badge
+                          label={t("home.vegetarian")}
+                          tone="success"
+                          uppercase={false}
+                          testID={`home-suggestion-veg-${suggestion.recipeId}`}
+                        />
+                      ) : null}
+                      {suggestion.rescues.length > 0 ? (
+                        <Badge
+                          label={rescueChipText(
+                            t,
+                            suggestion.rescues.map((r) => r.name),
+                          )}
+                          tone="warning"
+                          uppercase={false}
+                          testID={`home-suggestion-rescue-${suggestion.recipeId}`}
+                        />
+                      ) : null}
+                    </View>
+                  ) : null}
                 </View>
                 <Icon name="chevron-right" size={18} color="text-subtle" />
               </Pressable>
@@ -321,4 +352,5 @@ const styles = StyleSheet.create({
   // Fixed width so the meal labels line up into a column.
   rowLabel: { width: 56 },
   rowValue: { flex: 1, gap: theme.spacing[4] },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing[8] },
 });

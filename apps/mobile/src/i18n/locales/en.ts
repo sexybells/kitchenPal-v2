@@ -96,6 +96,18 @@ export const en: TranslationBundle = {
     suggestionMatch: "{{available}} on hand · {{needed}} to buy",
     suggestionsEmpty: "No suggestions yet. Add pantry items for closer matches.",
     todayEmpty: "No meals planned for today.",
+    vegDayPriority: "Today is {{lunar}} · vegetarian meals first",
+    vegetarian: "Vegetarian",
+    useItUp: "Use up: {{names}}",
+    lunar: {
+      day1: "the 1st of",
+      day15: "the full moon of",
+      dayN: "day {{day}} of",
+      month: "lunar month {{month}}",
+      monthFirst: "the first lunar month",
+      monthLast: "the last lunar month",
+      leap: "leap {{month}}",
+    },
   },
   pantry: {
     title: "Pantry",

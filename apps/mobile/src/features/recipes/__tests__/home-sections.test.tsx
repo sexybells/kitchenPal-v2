@@ -1,4 +1,5 @@
-import { screen, waitFor } from "@testing-library/react-native";
+import { act, screen, waitFor } from "@testing-library/react-native";
+import { i18n } from "../../../i18n";
 import { renderWithProviders } from "../../../test-utils/renderWithProviders";
 import { mealPlansApi, recipesApi } from "../../../api/recipes";
 import { pantryApi } from "../../../api/pantry";
@@ -34,7 +35,13 @@ const mockedRefill = pantryApi.refillSuggestions as jest.MockedFunction<
   typeof pantryApi.refillSuggestions
 >;
 
-function suggestion(id: string, name: string, available = 3, needed = 2) {
+function suggestion(
+  id: string,
+  name: string,
+  available = 3,
+  needed = 2,
+  extra: { rescues?: { name: string; expiryDate: string }[]; isVegetarian?: boolean } = {},
+) {
   return {
     recipeId: id,
     name,
@@ -46,12 +53,13 @@ function suggestion(id: string, name: string, available = 3, needed = 2) {
     neededCount: needed,
     rescues: [],
     isVegetarian: false,
+    ...extra,
   };
 }
 
 const day = {
   date: "2026-11-25",
-  lunar: { day: 15, month: 10, year: 2026, isLeapMonth: false },
+  lunar: { day: 10, month: 10, year: 2026, isLeapMonth: false },
   vegetarianDay: false,
   vegetarianPriority: false,
 };
@@ -117,6 +125,79 @@ describe("Home screen sections", () => {
 
     expect(await screen.findByText("Canh chua cá lóc")).toBeTruthy();
     expect(screen.getByText("4 on hand · 2 to buy")).toBeTruthy();
+  });
+
+  it("labels a vegetarian-priority day above the suggestions", async () => {
+    mockedPlan.mockRejectedValue(new Error("404"));
+    mockedSuggest.mockResolvedValue({
+      suggestions: [suggestion("r9", "Canh chua chay")],
+      provider: "none",
+      degraded: true,
+      day: {
+        ...day,
+        lunar: { day: 15, month: 10, year: 2026, isLeapMonth: false },
+        vegetarianDay: true,
+        vegetarianPriority: true,
+      },
+    });
+
+    await renderWithProviders(<HomeScreen />);
+    await act(async () => {
+      await i18n.changeLanguage("vi");
+    });
+
+    const label = await screen.findByTestId("home-veg-day");
+    expect(label).toHaveTextContent("Hôm nay rằm tháng 10 · ưu tiên món chay");
+  });
+
+  it("hides the day label when the user has not opted in", async () => {
+    mockedPlan.mockRejectedValue(new Error("404"));
+    mockedSuggest.mockResolvedValue({
+      suggestions: [suggestion("r9", "Canh chua cá lóc")],
+      provider: "none",
+      degraded: true,
+      day: {
+        ...day,
+        lunar: { day: 15, month: 10, year: 2026, isLeapMonth: false },
+        vegetarianDay: true,
+        vegetarianPriority: false,
+      },
+    });
+
+    await renderWithProviders(<HomeScreen />);
+
+    expect(await screen.findByText("Canh chua cá lóc")).toBeTruthy();
+    expect(screen.queryByTestId("home-veg-day")).toBeNull();
+  });
+
+  it("shows use-it-up and vegetarian chips on a suggestion", async () => {
+    mockedPlan.mockRejectedValue(new Error("404"));
+    mockedSuggest.mockResolvedValue({
+      suggestions: [
+        suggestion("r9", "Đậu sốt cà", 3, 1, {
+          isVegetarian: true,
+          rescues: ["cà chua", "đậu bắp", "hành"].map((name) => ({
+            name,
+            expiryDate: "2026-11-27T00:00:00.000Z",
+          })),
+        }),
+        suggestion("r10", "Thịt kho"),
+      ],
+      provider: "none",
+      degraded: true,
+      day,
+    });
+
+    await renderWithProviders(<HomeScreen />);
+    await act(async () => {
+      await i18n.changeLanguage("vi");
+    });
+
+    expect(await screen.findByText("Dùng hết: cà chua, đậu bắp +1")).toBeTruthy();
+    expect(screen.getByText("Chay")).toBeTruthy();
+    // A suggestion with nothing to rescue and not vegetarian gets no chips.
+    expect(screen.queryByTestId("home-suggestion-rescue-r10")).toBeNull();
+    expect(screen.queryByTestId("home-suggestion-veg-r10")).toBeNull();
   });
 
   it("asks for pantry items when nothing can be suggested", async () => {

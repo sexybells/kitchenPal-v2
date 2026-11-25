@@ -94,6 +94,18 @@ export const vi = {
     suggestionMatch: "Có {{available}} · cần mua {{needed}}",
     suggestionsEmpty: "Chưa có gợi ý nào. Thêm nguyên liệu vào tủ đồ để nhận gợi ý sát hơn.",
     todayEmpty: "Hôm nay chưa có bữa nào trong thực đơn.",
+    vegDayPriority: "Hôm nay {{lunar}} · ưu tiên món chay",
+    vegetarian: "Chay",
+    useItUp: "Dùng hết: {{names}}",
+    lunar: {
+      day1: "mùng 1",
+      day15: "rằm",
+      dayN: "ngày {{day}}",
+      month: "tháng {{month}}",
+      monthFirst: "tháng Giêng",
+      monthLast: "tháng Chạp",
+      leap: "{{month}} nhuận",
+    },
   },
   pantry: {
     title: "Tủ đồ",
