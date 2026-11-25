@@ -17,8 +17,8 @@ function createAiLogs(): {
 const logger = { warn: jest.fn(), error: jest.fn() } as never;
 
 const candidates: RankCandidate[] = [
-  { recipeId: "a", name: "A", mealType: "dinner", tags: [], matchScore: 0.2 },
-  { recipeId: "b", name: "B", mealType: "dinner", tags: [], matchScore: 0.9 },
+  { recipeId: "a", name: "A", mealType: "dinner", tags: [], matchScore: 0.2, rescueCount: 0, isVegetarian: false },
+  { recipeId: "b", name: "B", mealType: "dinner", tags: [], matchScore: 0.9, rescueCount: 0, isVegetarian: false },
 ];
 
 function provider(

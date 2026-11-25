@@ -88,6 +88,7 @@ export class ShoppingService {
       id: item.id,
       name: item.name,
       stockState: item.stockState,
+      expiryDate: item.expiryDate ?? null,
     }));
 
     const needed: NeededItem[] = [];

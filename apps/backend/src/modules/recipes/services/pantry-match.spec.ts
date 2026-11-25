@@ -4,8 +4,13 @@ function ingredient(name: string, optional = false) {
   return { name, quantity: null, unit: null, optional };
 }
 
-function stock(name: string, inStock = true): PantryStockLike {
-  return { id: name, name, stockState: inStock ? "plenty" : "out" };
+function stock(
+  name: string,
+  inStock = true,
+  expiryDate: Date | null = null,
+  id = name,
+): PantryStockLike {
+  return { id, name, stockState: inStock ? "plenty" : "out", expiryDate };
 }
 
 describe("matchIngredients", () => {
@@ -99,5 +104,29 @@ describe("matchIngredients with Vietnamese names", () => {
       [stock("trứng gà".normalize("NFD"))],
     );
     expect(result.available).toHaveLength(1);
+  });
+
+  it("links an ingredient to the soonest-expiring of two same-name items", () => {
+    const fresh = stock("cà chua", true, new Date("2026-12-30"), "fresh");
+    const expiring = stock("cà chua", true, new Date("2026-11-26"), "expiring");
+    const ingredients = [ingredient("cà chua"), ingredient("hành")];
+    const onion = stock("hành");
+    const pantry = [fresh, expiring, onion];
+
+    const result = matchIngredients(ingredients, pantry);
+    const unsorted = matchIngredients(ingredients, [expiring, fresh, onion]);
+
+    expect(result.matches[0]?.pantryItemId).toBe("expiring");
+    expect(result.matchScore).toBe(unsorted.matchScore);
+    expect(result.available).toHaveLength(unsorted.available.length);
+  });
+
+  it("does not mutate the caller's pantry array", () => {
+    const pantry = [
+      stock("a", true, new Date("2026-12-30")),
+      stock("b", true, new Date("2026-11-26")),
+    ];
+    matchIngredients([ingredient("a")], pantry);
+    expect(pantry.map((p) => p.id)).toEqual(["a", "b"]);
   });
 });

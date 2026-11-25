@@ -5,6 +5,8 @@ export interface PantryStockLike {
   id: string;
   name: string;
   stockState: StockState;
+  /** When the item spoils; null when it has no expiry. */
+  expiryDate: Date | null;
 }
 
 /** A recipe ingredient reduced to what matching needs. */
@@ -84,7 +86,15 @@ export function matchIngredients(
   ingredients: IngredientLike[],
   pantry: PantryStockLike[],
 ): PantryMatchResult {
-  const stock = pantry.map((item) => ({
+  // Soonest-expiring first (null last; Array.sort is stable) so an ingredient
+  // links to the item that should be used up first when names collide. This
+  // changes which item is picked, never which ingredients are available.
+  const sorted = [...pantry].sort(
+    (a, b) =>
+      (a.expiryDate?.getTime() ?? Infinity) -
+        (b.expiryDate?.getTime() ?? Infinity) || 0,
+  );
+  const stock = sorted.map((item) => ({
     id: item.id,
     tokens: tokenize(item.name),
     inStock: item.stockState !== "out",

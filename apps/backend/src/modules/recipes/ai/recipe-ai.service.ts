@@ -14,6 +14,10 @@ export interface RankCandidate {
   tags: string[];
   /** Fraction of ingredients already in the caller's pantry, 0..1. */
   matchScore: number;
+  /** Count of expiring pantry items this recipe would use up. */
+  rescueCount: number;
+  /** Whether the recipe carries the `chay` (vegetarian) tag. */
+  isVegetarian: boolean;
 }
 
 /** Outcome of an AI ranking, including the honest degrade signal. */
@@ -147,6 +151,8 @@ function buildRankPrompt(goal: string, candidates: RankCandidate[]): string {
     mealType: c.mealType,
     tags: c.tags,
     pantryMatch: Math.round(c.matchScore * 100) / 100,
+    rescueCount: c.rescueCount,
+    isVegetarian: c.isVegetarian,
   }));
   return (
     "You are a meal-planning assistant. Rank the candidate recipes from best to " +

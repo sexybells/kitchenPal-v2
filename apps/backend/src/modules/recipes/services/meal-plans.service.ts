@@ -149,6 +149,7 @@ export class MealPlansService {
         operation: "mealplan.autofill",
         goal: `Fill the ${mealType} slots of a weekly meal plan`,
         userId: scope.userId,
+        context: { now: new Date(), vegetarianDay: false },
       });
       rankedByMeal.set(
         mealType,

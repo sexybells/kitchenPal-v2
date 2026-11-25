@@ -396,6 +396,7 @@ export class RecipesService {
       id: item.id,
       name: item.name,
       stockState: item.stockState,
+      expiryDate: item.expiryDate ?? null,
     }));
     const result = matchIngredients(recipe.ingredients, stock);
     const project = (match: (typeof result.matches)[number], keepId: boolean) => ({
@@ -464,6 +465,7 @@ export class RecipesService {
       operation: options.operation,
       goal: options.goal,
       userId: scope.userId,
+      context: { now: new Date(), vegetarianDay: false },
     });
     const suggestions: RecipeSuggestion[] = selection.ranked
       .slice(0, query.limit)

@@ -6,7 +6,7 @@ import {
   type ScopeContext,
 } from "../../../common/scope/scope-context";
 import { PantryItemRepository } from "../../pantry/repositories/pantry-item.repository";
-import { RecipeAiService } from "../ai/recipe-ai.service";
+import { RecipeAiService, type RankResult } from "../ai/recipe-ai.service";
 import {
   RecipeRepository,
   type RecipeEntity,
@@ -17,6 +17,7 @@ import {
   type PantryMatchResult,
   type PantryStockLike,
 } from "./pantry-match";
+import { findRescues, type Rescue } from "./rescue";
 import {
   satisfiesPreferences,
   toPreferenceResponse,
@@ -28,6 +29,17 @@ type RecipeDoc = HydratedDocument<RecipeEntity>;
 export interface RankedRecipe {
   doc: RecipeDoc;
   match: PantryMatchResult;
+  /** Expiring pantry items this recipe's required ingredients would use up. */
+  rescues: Rescue[];
+  /** Whether the recipe carries the `chay` tag (case-insensitive). */
+  isVegetarian: boolean;
+}
+
+/** Caller-computed facts about "now" that influence ranking. */
+export interface SelectionContext {
+  now: Date;
+  /** Vegetarian priority applies (the caller has already ANDed in the opt-in). */
+  vegetarianDay: boolean;
 }
 
 /** Result of selecting and ranking candidate recipes. */
@@ -61,6 +73,9 @@ export class RecipeSelectionService {
       operation: string;
       goal: string;
       userId: string;
+      context: SelectionContext;
+      /** Defaults to true; false skips the AI ranker (heuristic order only). */
+      useAi?: boolean;
     },
   ): Promise<SelectionResult> {
     // Dietary preferences are per-user (allergens are safety-critical), so they
@@ -80,27 +95,41 @@ export class RecipeSelectionService {
     );
 
     const stock = await this.pantryStock(scope);
-    const analyzed: RankedRecipe[] = allowed.map((doc) => ({
-      doc,
-      match: matchIngredients(doc.ingredients, stock),
-    }));
+    const { context } = options;
+    const analyzed: RankedRecipe[] = allowed.map((doc) => {
+      const match = matchIngredients(doc.ingredients, stock);
+      return {
+        doc,
+        match,
+        rescues: findRescues(match, stock, context.now),
+        isVegetarian: doc.tags.some((tag) => tag.toLowerCase() === "chay"),
+      };
+    });
 
-    const rankResult = await this.ai.rank(
-      options.operation,
-      options.goal,
-      analyzed.map(({ doc, match }) => ({
-        recipeId: doc.id,
-        name: doc.name,
-        mealType: doc.mealType,
-        tags: doc.tags,
-        matchScore: match.matchScore,
-      })),
-      options.userId,
-    );
+    const rankResult: RankResult =
+      options.useAi === false
+        ? { order: null, provider: "none", degraded: true }
+        : await this.ai.rank(
+            options.operation,
+            buildGoal(options.goal, context),
+            analyzed.map(({ doc, match, rescues, isVegetarian }) => ({
+              recipeId: doc.id,
+              name: doc.name,
+              mealType: doc.mealType,
+              tags: doc.tags,
+              matchScore: match.matchScore,
+              rescueCount: rescues.length,
+              isVegetarian,
+            })),
+            options.userId,
+          );
 
-    const ranked = rankResult.order
-      ? orderBy(analyzed, rankResult.order)
-      : heuristicOrder(analyzed);
+    const ordered = rankResult.order
+      ? orderBy(analyzed, rankResult.order, context)
+      : heuristicOrder(analyzed, context);
+    // A hard constraint after AI too; the partition is stable, so the AI's
+    // order survives inside each group.
+    const ranked = context.vegetarianDay ? vegetarianFirst(ordered) : ordered;
 
     return {
       ranked,
@@ -116,12 +145,34 @@ export class RecipeSelectionService {
       id: item.id,
       name: item.name,
       stockState: item.stockState,
+      expiryDate: item.expiryDate ?? null,
     }));
   }
 }
 
+/** Appends the expiry and vegetarian-day clauses to the caller's goal. */
+function buildGoal(goal: string, context: SelectionContext): string {
+  const clauses = ["prefer recipes that use up ingredients close to expiry"];
+  if (context.vegetarianDay) {
+    clauses.push("today is a vegetarian day, so prefer vegetarian dishes");
+  }
+  return goal + "; " + clauses.join("; ");
+}
+
+/** Stable partition: vegetarian recipes first, relative order preserved. */
+function vegetarianFirst(entries: RankedRecipe[]): RankedRecipe[] {
+  return [
+    ...entries.filter((entry) => entry.isVegetarian),
+    ...entries.filter((entry) => !entry.isVegetarian),
+  ];
+}
+
 /** Reorders analyzed recipes to match an AI-provided id order; extras appended. */
-function orderBy(analyzed: RankedRecipe[], order: string[]): RankedRecipe[] {
+function orderBy(
+  analyzed: RankedRecipe[],
+  order: string[],
+  context: SelectionContext,
+): RankedRecipe[] {
   const byId = new Map(analyzed.map((entry) => [entry.doc.id, entry]));
   const ordered: RankedRecipe[] = [];
   for (const id of order) {
@@ -132,12 +183,24 @@ function orderBy(analyzed: RankedRecipe[], order: string[]): RankedRecipe[] {
     }
   }
   // Any candidate the model omitted still follows, heuristically ordered.
-  return [...ordered, ...heuristicOrder([...byId.values()])];
+  return [...ordered, ...heuristicOrder([...byId.values()], context)];
 }
 
-/** Deterministic fallback: best pantry match first, then highest rating. */
-function heuristicOrder(analyzed: RankedRecipe[]): RankedRecipe[] {
+/**
+ * Deterministic order: vegetarian first (on a vegetarian day), then most
+ * expiring items rescued, best pantry match, highest rating.
+ */
+function heuristicOrder(
+  analyzed: RankedRecipe[],
+  context: SelectionContext,
+): RankedRecipe[] {
   return [...analyzed].sort((a, b) => {
+    if (context.vegetarianDay && a.isVegetarian !== b.isVegetarian) {
+      return a.isVegetarian ? -1 : 1;
+    }
+    if (b.rescues.length !== a.rescues.length) {
+      return b.rescues.length - a.rescues.length;
+    }
     if (b.match.matchScore !== a.match.matchScore) {
       return b.match.matchScore - a.match.matchScore;
     }
