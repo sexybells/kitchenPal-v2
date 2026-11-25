@@ -4,7 +4,7 @@ import { renderWithProviders } from "../../../test-utils/renderWithProviders";
 import { notificationsApi } from "../../../api/notifications";
 import { usersApi } from "../../../api/users";
 import NotificationsScreen from "../../../../app/notifications";
-import { registerPushToken } from "../push";
+import { registerPushToken, routeForPushResponse } from "../push";
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
@@ -124,5 +124,35 @@ describe("push registration", () => {
     const token = await registerPushToken();
     expect(token).toBeNull();
     expect(usersApi.registerPushToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("push tap routing", () => {
+  const tap = (data: Record<string, unknown>) =>
+    routeForPushResponse({
+      notification: { request: { content: { data } } },
+    } as unknown as Parameters<typeof routeForPushResponse>[0]);
+
+  it("routes chat pushes from the real { type, ...payload } shape", () => {
+    expect(tap({ type: "chat_message", householdId: "h1" })).toEqual({
+      pathname: "/chat",
+      params: { householdId: "h1" },
+    });
+  });
+
+  it("opens the rescue recipe for an expiry alert that carries one", () => {
+    expect(tap({ type: "expiry_alert", recipeId: "r1" })).toBe("/recipe?id=r1");
+  });
+
+  it("falls back to the pantry for an expiry alert without a recipe", () => {
+    expect(tap({ type: "expiry_alert" })).toBe("/pantry");
+  });
+
+  it("opens home for a vegetarian-day push", () => {
+    expect(tap({ type: "vegetarian_day" })).toBe("/");
+  });
+
+  it("ignores an unknown type", () => {
+    expect(tap({ type: "bogus" })).toBeNull();
   });
 });

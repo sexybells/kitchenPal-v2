@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import { notificationResponseSchema } from "@kitchenpal/api-contract";
+import { notificationTypeSchema } from "@kitchenpal/api-contract";
 import { usersApi } from "../../api/users";
 import { notificationRoute } from "./labels";
 import type { Href } from "expo-router";
@@ -54,14 +54,17 @@ export const registerPushToken = async (): Promise<string | null> => {
 };
 
 /**
- * Resolve the deep-link destination for a tapped push notification, validating
- * the OS-delivered `data` against the notification contract first. Returns null
- * when the payload is not a recognised notification.
+ * Resolve the deep-link destination for a tapped push notification. The backend
+ * sends `data` as `{ type, ...payload }` (not a full notification record), so
+ * validate `type` and treat the remaining keys as the payload. Returns null when
+ * the type is not a recognised notification.
  */
 export const routeForPushResponse = (
   response: Notifications.NotificationResponse,
 ): Href | null => {
-  const data = response.notification.request.content.data;
-  const parsed = notificationResponseSchema.safeParse(data);
-  return parsed.success ? notificationRoute(parsed.data) : null;
+  const { type, ...payload } = response.notification.request.content.data ?? {};
+  const parsed = notificationTypeSchema.safeParse(type);
+  return parsed.success
+    ? notificationRoute({ type: parsed.data, payload })
+    : null;
 };

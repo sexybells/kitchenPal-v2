@@ -27,7 +27,7 @@ const META: Record<
   chat_mention: { icon: "users", tone: "primary", labelKey: "notifications.type.mention" },
   household_invite: { icon: "household", tone: "info", labelKey: "notifications.type.invite" },
   invite_accepted: { icon: "household", tone: "success", labelKey: "notifications.type.inviteAccepted" },
-  vegetarian_day: { icon: "clock", tone: "info", labelKey: "notifications.type.vegetarianDay" },
+  vegetarian_day: { icon: "leaf", tone: "success", labelKey: "notifications.type.vegetarianDay" },
 };
 
 export const notificationMeta = (
@@ -60,7 +60,7 @@ export const notificationPreview = (
  * relevant feature. Returns null when there is no meaningful destination.
  */
 export const notificationRoute = (
-  notification: NotificationResponse,
+  notification: Pick<NotificationResponse, "type" | "payload">,
 ): Href | null => {
   const householdId = payloadString(notification.payload, "householdId");
   switch (notification.type) {
@@ -72,8 +72,12 @@ export const notificationRoute = (
     case "household_invite":
     case "invite_accepted":
       return "/household";
-    case "expiry_alert":
-      return "/pantry";
+    case "expiry_alert": {
+      const recipeId = payloadString(notification.payload, "recipeId");
+      return recipeId ? `/recipe?id=${recipeId}` : "/pantry";
+    }
+    case "vegetarian_day":
+      return "/";
     case "budget_alert":
       return "/spending";
     default:
