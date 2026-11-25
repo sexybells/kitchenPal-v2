@@ -22,7 +22,16 @@ import {
   type RecipeEntity,
 } from "../repositories/recipe.repository";
 import { MealPlanSlotItem } from "../schemas/meal-plan.schema";
-import { RecipeSelectionService } from "./recipe-selection.service";
+import { addDays, type SolarDate } from "../../../common/calendar/local-date";
+import {
+  isVegetarianLunarDay,
+  toLunarDate,
+} from "../../../common/calendar/vietnamese-lunar";
+import { DayContextService } from "./day-context.service";
+import {
+  RecipeSelectionService,
+  type RankedRecipe,
+} from "./recipe-selection.service";
 
 const DAYS_PER_WEEK = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -43,6 +52,7 @@ export class MealPlansService {
     private readonly plans: MealPlanRepository,
     private readonly recipes: RecipeRepository,
     private readonly selection: RecipeSelectionService,
+    private readonly dayContext: DayContextService,
   ) {}
 
   async create(
@@ -140,7 +150,7 @@ export class MealPlansService {
     const mealTypes = unique(targets.map((slot) => slot.mealType));
 
     // Rank candidate recipes once per meal type (respecting diet + pantry).
-    const rankedByMeal = new Map<MealType, RecipeDoc[]>();
+    const rankedByMeal = new Map<MealType, RankedRecipe[]>();
     let provider = "none";
     let anyAi = false;
     for (const mealType of mealTypes) {
@@ -151,17 +161,24 @@ export class MealPlansService {
         userId: scope.userId,
         context: { now: new Date(), vegetarianDay: false },
       });
-      rankedByMeal.set(
-        mealType,
-        result.ranked.map((entry) => entry.doc),
-      );
+      rankedByMeal.set(mealType, result.ranked);
       if (!result.degraded) {
         anyAi = true;
         provider = result.provider;
       }
     }
 
+    // A plan's weekStart is UTC midnight of a Monday, i.e. a zone-less calendar date.
+    const observesVegetarian = await this.dayContext.observesVegetarianDays(
+      scope.userId,
+    );
+    const weekStartDate: SolarDate = {
+      year: plan.weekStart.getUTCFullYear(),
+      month: plan.weekStart.getUTCMonth() + 1,
+      day: plan.weekStart.getUTCDate(),
+    };
     const cursors = new Map<MealType, number>();
+    const usedVegetarian = new Map<MealType, Set<string>>();
     const filledSlotIds: string[] = [];
     const nextSlots = plan.slots.map((slot) => {
       const plain = toPlainSlot(slot);
@@ -173,11 +190,33 @@ export class MealPlansService {
       if (candidates.length === 0) {
         return plain;
       }
-      // Cycle through candidates so a short list still fills the whole week.
+      // The cycle advances for every filled slot, so a vegetarian pick never
+      // shifts what the other days get.
       const index = cursors.get(slot.mealType) ?? 0;
-      const chosen = candidates[index % candidates.length];
+      let chosen: RecipeDoc | undefined;
+      if (
+        observesVegetarian &&
+        isVegetarianLunarDay(
+          toLunarDate(addDays(weekStartDate, slot.dayOfWeek)),
+        )
+      ) {
+        // Lunar vegetarian day: next chay recipe not yet given to such a slot.
+        const used = usedVegetarian.get(slot.mealType) ?? new Set<string>();
+        const veg = candidates.find(
+          (entry) => entry.isVegetarian && !used.has(entry.doc.id),
+        );
+        if (veg) {
+          used.add(veg.doc.id);
+          usedVegetarian.set(slot.mealType, used);
+          chosen = veg.doc;
+        }
+      }
       if (!chosen) {
-        return plain;
+        // Cycle through candidates so a short list still fills the whole week.
+        chosen = candidates[index % candidates.length]?.doc;
+        if (!chosen) {
+          return plain;
+        }
       }
       cursors.set(slot.mealType, index + 1);
       filledSlotIds.push(slot.id);

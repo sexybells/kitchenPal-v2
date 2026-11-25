@@ -36,11 +36,7 @@ export class DayContextService {
   ) {}
 
   async forUser(userId: string, at: Date): Promise<DayContext> {
-    const stored = await this.settings.findOne({
-      scope: "personal",
-      userId,
-      householdId: null,
-    });
+    const stored = await this.storedSettings(userId);
     const timeZone = this.resolveZone(userId, stored?.timeZone);
     const solar = localDateIn(timeZone, at);
     const lunar = toLunarDate(solar);
@@ -58,6 +54,19 @@ export class DayContextService {
       timeZone,
       solar,
     };
+  }
+
+  /** Whether the user opted in to vegetarian days, for dates other than today. */
+  async observesVegetarianDays(userId: string): Promise<boolean> {
+    return (await this.storedSettings(userId))?.observesVegetarianDays === true;
+  }
+
+  private storedSettings(userId: string) {
+    return this.settings.findOne({
+      scope: "personal",
+      userId,
+      householdId: null,
+    });
   }
 
   private resolveZone(userId: string, stored: string | undefined): string {

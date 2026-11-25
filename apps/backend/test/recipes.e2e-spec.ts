@@ -428,6 +428,76 @@ describe("Recipes & meal plans (e2e)", () => {
     expect(result.filledSlotIds).toHaveLength(dinnerSlots.length);
   });
 
+  describe("lunar vegetarian days", () => {
+    // Week of Mon 2026-03-02; Tue 2026-03-03 is lunar 15/1 (dayOfWeek 1).
+    const WEEK_START = "2026-03-02T00:00:00.000Z";
+    const LUNAR_15_DAY = 1;
+
+    it("fills lunar-15 slots with vegetarian recipes for opted-in users", async () => {
+      const user = await registerUser();
+      // Stock the meat ingredients so both meat recipes rank above the chay one;
+      // the plain cycle then puts meat on the lunar-15 day.
+      for (const name of ["Zebra steak", "Yak ribs"]) {
+        const item = await request(server)
+          .post("/pantry/items")
+          .set(auth(user))
+          .send({ name, category: "Meat", stockState: "plenty" });
+        expect(item.status).toBe(201);
+      }
+      for (const [name, ingredient] of [
+        ["Zebra Steak Dinner", "Zebra steak"],
+        ["Yak Rib Dinner", "Yak ribs"],
+      ]) {
+        await createRecipe(user, {
+          name,
+          mealType: "dinner",
+          tags: ["meat"],
+          ingredients: [{ name: ingredient }],
+        });
+      }
+      const chay = await createRecipe(user, {
+        name: "Đậu hũ sốt cà",
+        mealType: "dinner",
+        tags: ["chay"],
+        ingredients: [{ name: "Đậu hũ" }],
+      });
+      const created = await request(server)
+        .post("/meal-plans")
+        .set(auth(user))
+        .send({ weekStart: WEEK_START, mealTypes: ["dinner"] });
+      expect(created.status).toBe(201);
+      const plan = mealPlanResponseSchema.parse(created.body.data);
+
+      async function fill(): Promise<(string | null)[]> {
+        const res = await request(server)
+          .post(`/meal-plans/${plan.id}/auto-fill`)
+          .set(auth(user))
+          .send({ overwrite: true });
+        expect(res.status).toBe(200);
+        return [...autoFillResponseSchema.parse(res.body.data).plan.slots]
+          .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+          .map((slot) => slot.recipeId);
+      }
+
+      // Not opted in: the lunar-15 day gets whatever the plain cycle gives.
+      const plain = await fill();
+      expect(plain[LUNAR_15_DAY]).not.toBe(chay.id);
+
+      const optIn = await request(server)
+        .patch("/users/settings")
+        .set(auth(user))
+        .send({ observesVegetarianDays: true });
+      expect(optIn.status).toBe(200);
+
+      // Opted in: only that day changes, and it now holds the chay recipe.
+      const opted = await fill();
+      expect(opted[LUNAR_15_DAY]).toBe(chay.id);
+      expect(opted.filter((_, day) => day !== LUNAR_15_DAY)).toEqual(
+        plain.filter((_, day) => day !== LUNAR_15_DAY),
+      );
+    });
+  });
+
   it("guards slot edits with the expected version", async () => {
     const user = await registerUser();
     const recipe = await createRecipe(user, {
