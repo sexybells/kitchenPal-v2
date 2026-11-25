@@ -70,6 +70,14 @@ export class UserSettings {
 
   @Prop({ type: [DevicePushTokenSchema], default: [] })
   pushTokens!: DevicePushToken[];
+
+  /** Whether the user keeps lunar-calendar vegetarian days (1st and 15th). */
+  @Prop({ default: false })
+  observesVegetarianDays!: boolean;
+
+  /** IANA zone used to decide the user's local date. */
+  @Prop({ type: String, default: "Asia/Ho_Chi_Minh" })
+  timeZone!: string;
 }
 
 export const UserSettingsSchema = SchemaFactory.createForClass(UserSettings);

@@ -34,9 +34,8 @@ function toSettingsResponse(
       shoppingReminders: doc.notifications.shoppingReminders,
     },
     biometricLockEnabled: doc.biometricLockEnabled,
-    // TEMPORARY: defaults until the settings schema stores these fields.
-    observesVegetarianDays: false,
-    timeZone: "Asia/Ho_Chi_Minh",
+    observesVegetarianDays: doc.observesVegetarianDays,
+    timeZone: doc.timeZone,
   };
 }
 
@@ -88,6 +87,12 @@ export class UsersService {
         shoppingReminders:
           input.notifications.shoppingReminders ?? current.shoppingReminders,
       };
+    }
+    if (input.observesVegetarianDays !== undefined) {
+      update.observesVegetarianDays = input.observesVegetarianDays;
+    }
+    if (input.timeZone) {
+      update.timeZone = input.timeZone;
     }
 
     const updated = await this.settings.updateWithVersion(

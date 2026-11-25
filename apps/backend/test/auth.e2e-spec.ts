@@ -440,6 +440,34 @@ describe("Auth and identity (e2e)", () => {
       ).toContain("pantry-intro");
     });
 
+    it("stores observesVegetarianDays and timeZone", async () => {
+      const { tokens } = await register({ locale: "vi" });
+      const auth = { Authorization: `Bearer ${tokens.accessToken}` };
+
+      const fresh = await request(server).get("/users/settings").set(auth);
+      expect(fresh.status).toBe(200);
+      expect(fresh.body.data.observesVegetarianDays).toBe(false);
+      expect(fresh.body.data.timeZone).toBe("Asia/Ho_Chi_Minh");
+
+      const updated = await request(server)
+        .patch("/users/settings")
+        .set(auth)
+        .send({ observesVegetarianDays: true, timeZone: "Europe/Berlin" });
+      expect(updated.status).toBe(200);
+      expect(updated.body.data.observesVegetarianDays).toBe(true);
+      expect(updated.body.data.timeZone).toBe("Europe/Berlin");
+
+      const reread = await request(server).get("/users/settings").set(auth);
+      expect(reread.body.data.observesVegetarianDays).toBe(true);
+      expect(reread.body.data.timeZone).toBe("Europe/Berlin");
+
+      const invalid = await request(server)
+        .patch("/users/settings")
+        .set(auth)
+        .send({ timeZone: "Mars/Base" });
+      expect(invalid.status).toBe(400);
+    });
+
     it("keeps the account locale in sync when settings locale changes", async () => {
       const { tokens } = await register({ locale: "vi" });
       const auth = { Authorization: `Bearer ${tokens.accessToken}` };
