@@ -44,8 +44,17 @@ function suggestion(id: string, name: string, available = 3, needed = 2) {
     matchScore: available / (available + needed),
     availableCount: available,
     neededCount: needed,
+    rescues: [],
+    isVegetarian: false,
   };
 }
+
+const day = {
+  date: "2026-11-25",
+  lunar: { day: 15, month: 10, year: 2026, isLeapMonth: false },
+  vegetarianDay: false,
+  vegetarianPriority: false,
+};
 
 describe("Home screen sections", () => {
   beforeEach(() => {
@@ -54,7 +63,7 @@ describe("Home screen sections", () => {
     mockedPlan.mockReset();
     mockedSuggest
       .mockReset()
-      .mockResolvedValue({ suggestions: [], provider: "none", degraded: true });
+      .mockResolvedValue({ suggestions: [], provider: "none", degraded: true, day });
   });
 
   it("shows only today's slots from the weekly plan", async () => {
@@ -101,6 +110,7 @@ describe("Home screen sections", () => {
       suggestions: [suggestion("r9", "Canh chua cá lóc", 4, 2)],
       provider: "none",
       degraded: true,
+      day,
     });
 
     await renderWithProviders(<HomeScreen />);

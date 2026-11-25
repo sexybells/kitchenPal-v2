@@ -476,11 +476,15 @@ export class RecipesService {
         matchScore: Math.round(match.matchScore * 100) / 100,
         availableCount: match.available.length,
         neededCount: match.needed.length,
+        // TEMPORARY stubs until the use-it-up/vegetarian logic lands.
+        rescues: [],
+        isVegetarian: false,
       }));
     return {
       suggestions,
       provider: selection.provider,
       degraded: selection.degraded,
+      day: placeholderDay(),
     };
   }
 
@@ -576,4 +580,17 @@ function decodeCursor(cursor: string | undefined): number {
     10,
   );
   return Number.isFinite(decoded) && decoded >= 0 ? decoded : 0;
+}
+
+/**
+ * TEMPORARY: a fixed day so the contract compiles. Replaced by the real
+ * lunar-calendar day computation in the suggestions task; delete then.
+ */
+function placeholderDay(): SuggestionsResponse["day"] {
+  return {
+    date: "1970-01-01",
+    lunar: { day: 1, month: 1, year: 1970, isLeapMonth: false },
+    vegetarianDay: false,
+    vegetarianPriority: false,
+  };
 }

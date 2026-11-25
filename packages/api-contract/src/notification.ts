@@ -12,6 +12,7 @@ export const notificationTypeSchema = z.enum([
   "chat_mention",
   "household_invite",
   "invite_accepted",
+  "vegetarian_day",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 

@@ -34,6 +34,9 @@ function toSettingsResponse(
       shoppingReminders: doc.notifications.shoppingReminders,
     },
     biometricLockEnabled: doc.biometricLockEnabled,
+    // TEMPORARY: defaults until the settings schema stores these fields.
+    observesVegetarianDays: false,
+    timeZone: "Asia/Ho_Chi_Minh",
   };
 }
 

@@ -25,6 +25,7 @@ export class Notification {
       "chat_mention",
       "household_invite",
       "invite_accepted",
+      "vegetarian_day",
     ],
     required: true,
   })

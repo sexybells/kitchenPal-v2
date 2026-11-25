@@ -7,16 +7,8 @@ export interface SolarDate {
   day: number;
 }
 
-/** Whether `value` is an IANA time zone name the runtime understands. */
-export function isValidTimeZone(value: string): boolean {
-  if (!value) return false;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
-}
+/** Single definition lives in the contract so the API and clients agree. */
+export { isValidTimeZone } from "@kitchenpal/api-contract";
 
 /** The calendar date at instant `at` as seen on a wall clock in `timeZone`. */
 export function localDateIn(timeZone: string, at: Date): SolarDate {

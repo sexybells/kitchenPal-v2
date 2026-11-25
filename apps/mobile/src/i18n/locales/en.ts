@@ -449,6 +449,7 @@ export const en: TranslationBundle = {
       mention: "Mention",
       invite: "Invite",
       inviteAccepted: "Joined",
+      vegetarianDay: "Vegetarian day",
     },
   },
   community: {

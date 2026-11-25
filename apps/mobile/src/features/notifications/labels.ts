@@ -15,7 +15,7 @@ export interface NotificationMeta {
 
 /** Localization keys for notification type labels (keeps `t()` type-safe). */
 type NotificationLabelKey =
-  `notifications.type.${"expiry" | "budget" | "chat" | "mention" | "invite" | "inviteAccepted"}`;
+  `notifications.type.${"expiry" | "budget" | "chat" | "mention" | "invite" | "inviteAccepted" | "vegetarianDay"}`;
 
 const META: Record<
   NotificationType,
@@ -27,6 +27,7 @@ const META: Record<
   chat_mention: { icon: "users", tone: "primary", labelKey: "notifications.type.mention" },
   household_invite: { icon: "household", tone: "info", labelKey: "notifications.type.invite" },
   invite_accepted: { icon: "household", tone: "success", labelKey: "notifications.type.inviteAccepted" },
+  vegetarian_day: { icon: "clock", tone: "info", labelKey: "notifications.type.vegetarianDay" },
 };
 
 export const notificationMeta = (

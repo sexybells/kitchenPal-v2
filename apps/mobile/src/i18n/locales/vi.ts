@@ -450,6 +450,7 @@ export const vi = {
       mention: "Nhắc đến",
       invite: "Lời mời",
       inviteAccepted: "Đã tham gia",
+      vegetarianDay: "Ngày chay",
     },
   },
   community: {

@@ -153,6 +153,31 @@ export type RecipeCommentResponse = z.infer<
   typeof recipeCommentResponseSchema
 >;
 
+/** An at-risk pantry item a suggestion would use up. */
+export const suggestionRescueSchema = z.object({
+  name: z.string(),
+  /** ISO date (or datetime) the item expires. */
+  expiryDate: z.string(),
+});
+export type SuggestionRescue = z.infer<typeof suggestionRescueSchema>;
+
+/** The user's local day, with its Vietnamese lunar date and vegetarian flags. */
+export const suggestionDaySchema = z.object({
+  /** Local solar date, `YYYY-MM-DD`. */
+  date: z.string(),
+  lunar: z.object({
+    day: z.number(),
+    month: z.number(),
+    year: z.number(),
+    isLeapMonth: z.boolean(),
+  }),
+  /** True on lunar day 1 or 15. */
+  vegetarianDay: z.boolean(),
+  /** True when the user observes vegetarian days and today is one. */
+  vegetarianPriority: z.boolean(),
+});
+export type SuggestionDay = z.infer<typeof suggestionDaySchema>;
+
 /**
  * One suggested recipe with its pantry-match signal. `recipeId` always points
  * at a real, readable recipe — suggestions never fabricate content.
@@ -166,6 +191,9 @@ export const recipeSuggestionSchema = z.object({
   matchScore: z.number(),
   availableCount: z.number(),
   neededCount: z.number(),
+  /** Pantry items about to expire that this recipe would use up. */
+  rescues: z.array(suggestionRescueSchema),
+  isVegetarian: z.boolean(),
 });
 export type RecipeSuggestion = z.infer<typeof recipeSuggestionSchema>;
 
@@ -182,6 +210,7 @@ export const suggestionsResponseSchema = z.object({
   provider: z.string(),
   /** True when no AI provider was available; results are heuristic, not AI. */
   degraded: z.boolean(),
+  day: suggestionDaySchema,
 });
 export type SuggestionsResponse = z.infer<typeof suggestionsResponseSchema>;
 

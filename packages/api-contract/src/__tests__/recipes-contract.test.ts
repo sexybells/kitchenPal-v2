@@ -5,6 +5,7 @@ import {
   createMealPlanSchema,
   communityQuerySchema,
   suggestionQuerySchema,
+  suggestionsResponseSchema,
   confirmImportSchema,
 } from "../index.js";
 
@@ -62,5 +63,43 @@ describe("recipes contract", () => {
     });
     expect(parsed.draft.name).toBe("Imported dish");
     expect(parsed.draft.mealType).toBe("dinner");
+  });
+});
+
+describe("suggestions response contract", () => {
+  const sample = {
+    suggestions: [
+      {
+        recipeId: "r1",
+        name: "Canh chua",
+        mealType: "dinner",
+        imageUrl: null,
+        reason: "Uses what you have",
+        matchScore: 0.8,
+        availableCount: 4,
+        neededCount: 1,
+        rescues: [{ name: "Tomato", expiryDate: "2026-11-27" }],
+        isVegetarian: true,
+      },
+    ],
+    provider: "none",
+    degraded: true,
+    day: {
+      date: "2026-11-25",
+      lunar: { day: 15, month: 10, year: 2026, isLeapMonth: false },
+      vegetarianDay: true,
+      vegetarianPriority: true,
+    },
+  };
+
+  it("parses rescues, isVegetarian and day", () => {
+    const parsed = suggestionsResponseSchema.parse(sample);
+    expect(parsed.suggestions[0]?.rescues).toHaveLength(1);
+    expect(parsed.day.lunar.day).toBe(15);
+  });
+
+  it("rejects a response missing day", () => {
+    const { day: _day, ...withoutDay } = sample;
+    expect(suggestionsResponseSchema.safeParse(withoutDay).success).toBe(false);
   });
 });

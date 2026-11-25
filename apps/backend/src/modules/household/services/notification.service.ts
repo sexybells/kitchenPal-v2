@@ -50,6 +50,7 @@ const CHANNELS: Record<NotificationType, { push: boolean; email: boolean }> = {
   chat_mention: { push: true, email: true },
   household_invite: { push: true, email: true },
   invite_accepted: { push: true, email: false },
+  vegetarian_day: { push: true, email: false },
 };
 
 function personalScope(userId: string): ScopeContext {
