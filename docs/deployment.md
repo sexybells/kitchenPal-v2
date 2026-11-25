@@ -165,13 +165,63 @@ See `apps/admin/.env.example`.
    `apps/backend/src/modules/auth/services/auth.service.ts`). Rotate
    `ADMIN_BOOTSTRAP_SECRET` (or remove it from secrets) once the first admin
    exists — it is a standing elevation path as long as it's set.
-7. **Admin console**: `fly launch --no-deploy --copy-config --name kitchenpal-admin`,
+7. **Seed the system recipe library** (safe to re-run, and required for a
+   useful first launch): `pnpm --filter @kitchenpal/backend seed:recipes`, or
+   `fly ssh console -a kitchenpal-backend -C "node dist/scripts/seed-system-recipes.js"`.
+   Suggestions and meal-plan auto-fill only ever rank EXISTING recipes, so
+   without this a fresh environment returns an empty list to every user.
+   The seeder is additive and idempotent (keyed on the recipe name within
+   `scope: "system"`): re-running writes nothing unless the seed file changed,
+   never touches user recipes, and never resurrects a dish an admin removed.
+   Re-run it after any deploy that edits
+   `apps/backend/src/modules/recipes/data/`.
+8. **Admin console**: `fly launch --no-deploy --copy-config --name kitchenpal-admin`,
    then
    `fly deploy --config apps/admin/fly.toml --dockerfile apps/admin/Dockerfile --build-arg VITE_API_URL=https://kitchenpal-backend.fly.dev`.
-8. **GitHub Actions**: set repo secrets `FLY_API_TOKEN` (one token, both apps)
+9. **GitHub Actions**: set repo secrets `FLY_API_TOKEN` (one token, both apps)
    and `ADMIN_VITE_API_URL`; configure the `production` GitHub Environment with
    required reviewers if a manual approval gate is wanted before `deploy.yml`
    runs its deploy jobs.
+
+## Self-hosted VPS deployment (222.255.181.96)
+
+The backend also runs as a self-contained Docker stack on the shared VPS. It is
+deliberately isolated from the other projects on that host — its own Mongo,
+Redis, and object storage; it does not touch the existing `aibox_mongo`.
+
+| Path | What |
+|---|---|
+| `/opt/kitchenpal` | Source tree (rsync'd from a working copy; no git remote on the box) |
+| `/opt/kitchenpal-stack/docker-compose.yml` | The stack: mongo (single-node replica set) · redis · minio · api |
+| `/opt/kitchenpal-stack/.env` | Config + secrets, generated on the box, `chmod 600` |
+
+Notes that matter:
+
+- **Mongo is a single-node replica set**, not the host's standalone `aibox_mongo`.
+  The pantry/shopping/rating paths use multi-document transactions, which a
+  standalone `mongod` refuses outright.
+- **MinIO provides S3-compatible storage.** In production the config is
+  fail-closed on `STORAGE_PROVIDER=s3` with a bucket and region, and local disk
+  is not durable — MinIO satisfies that without any third-party account.
+- **The API is published on `127.0.0.1:3101` only.** Nothing is reachable from
+  the internet until a reverse-proxy route is added on purpose.
+
+```bash
+ssh 222.255.181.96 'cd /opt/kitchenpal-stack && docker compose up -d'
+```
+
+Seed (or re-seed) the recipe library after a deploy:
+
+```bash
+ssh 222.255.181.96 'cd /opt/kitchenpal-stack && docker compose exec -T api node dist/scripts/seed-system-recipes.js'
+```
+
+Still unconfigured on this deployment, each needing a credential:
+`RESEND_API_KEY` (without it **registration fails with a 500** — production
+refuses the dev log-email transport), `GOOGLE_CLIENT_IDS` / `APPLE_CLIENT_IDS`,
+`OPENAI_API_KEY` / `GEMINI_API_KEY` (suggestions degrade to the deterministic
+heuristic without them), and `SOCKET_CORS_ORIGINS` / `APP_WEB_URL`, which are
+placeholders until a web client is deployed.
 
 ## CI/CD
 
