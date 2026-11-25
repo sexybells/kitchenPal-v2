@@ -85,14 +85,23 @@ function tokensMatch(a: Set<string>, b: Set<string>): boolean {
 export function matchIngredients(
   ingredients: IngredientLike[],
   pantry: PantryStockLike[],
+  now: Date = new Date(),
 ): PantryMatchResult {
-  // Soonest-expiring first (null last; Array.sort is stable) so an ingredient
-  // links to the item that should be used up first when names collide. This
-  // changes which item is picked, never which ingredients are available.
+  // Link order (Array.sort is stable): unexpired dated items soonest first,
+  // then undated items, then already-expired ones last, so an ingredient is
+  // never linked to spoiled food while a usable item exists. This changes which
+  // item is picked, never which ingredients are available.
+  const nowMs = now.getTime();
+  const rank = (item: PantryStockLike): number => {
+    if (!item.expiryDate) return 1;
+    return item.expiryDate.getTime() > nowMs ? 0 : 2;
+  };
   const sorted = [...pantry].sort(
     (a, b) =>
-      (a.expiryDate?.getTime() ?? Infinity) -
-        (b.expiryDate?.getTime() ?? Infinity) || 0,
+      rank(a) - rank(b) ||
+      (rank(a) === 0 && b.expiryDate && a.expiryDate
+        ? a.expiryDate.getTime() - b.expiryDate.getTime()
+        : 0),
   );
   const stock = sorted.map((item) => ({
     id: item.id,

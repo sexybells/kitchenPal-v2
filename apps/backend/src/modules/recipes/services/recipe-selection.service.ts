@@ -97,7 +97,7 @@ export class RecipeSelectionService {
     const stock = await this.pantryStock(scope);
     const { context } = options;
     const analyzed: RankedRecipe[] = allowed.map((doc) => {
-      const match = matchIngredients(doc.ingredients, stock);
+      const match = matchIngredients(doc.ingredients, stock, context.now);
       return {
         doc,
         match,

@@ -113,8 +113,9 @@ describe("matchIngredients with Vietnamese names", () => {
     const onion = stock("hành");
     const pantry = [fresh, expiring, onion];
 
-    const result = matchIngredients(ingredients, pantry);
-    const unsorted = matchIngredients(ingredients, [expiring, fresh, onion]);
+    const now = new Date("2026-11-25T09:00:00Z");
+    const result = matchIngredients(ingredients, pantry, now);
+    const unsorted = matchIngredients(ingredients, [expiring, fresh, onion], now);
 
     expect(result.matches[0]?.pantryItemId).toBe("expiring");
     expect(result.matchScore).toBe(unsorted.matchScore);
@@ -128,5 +129,29 @@ describe("matchIngredients with Vietnamese names", () => {
     ];
     matchIngredients([ingredient("a")], pantry);
     expect(pantry.map((p) => p.id)).toEqual(["a", "b"]);
+  });
+
+  it("links to an at-risk item rather than an already-expired same-name one", () => {
+    const now = new Date("2026-11-25T09:00:00Z");
+    const expired = stock("cà chua", true, new Date("2026-11-20"), "expired");
+    const soon = stock("cà chua", true, new Date("2026-11-27"), "soon");
+    const result = matchIngredients([ingredient("cà chua")], [expired, soon], now);
+    expect(result.matches[0]?.pantryItemId).toBe("soon");
+  });
+
+  it("falls back to an expired item when it is the only match", () => {
+    const now = new Date("2026-11-25T09:00:00Z");
+    const expired = stock("cà chua", true, new Date("2026-11-20"), "expired");
+    const result = matchIngredients([ingredient("cà chua")], [expired], now);
+    expect(result.matches[0]?.pantryItemId).toBe("expired");
+  });
+
+  it("skips an out-of-stock soonest item and links the fresher in-stock one", () => {
+    const now = new Date("2026-11-25T09:00:00Z");
+    const out = stock("cà chua", false, new Date("2026-11-26"), "out");
+    const fresh = stock("cà chua", true, new Date("2026-12-30"), "fresh");
+    const result = matchIngredients([ingredient("cà chua")], [out, fresh], now);
+    expect(result.matches[0]?.available).toBe(true);
+    expect(result.matches[0]?.pantryItemId).toBe("fresh");
   });
 });
