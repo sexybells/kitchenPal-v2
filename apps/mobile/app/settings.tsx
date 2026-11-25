@@ -28,8 +28,14 @@ export default function SettingsScreen() {
   const updateSettings = useUpdateSettings();
   const loaded = settings.data !== undefined;
 
+  const authed = useSessionStore((state) => state.status === "authed");
+
   const selectLocale = async (next: Locale) => {
     setLocale(next);
+    // The server copy picks the language of reminder pushes.
+    if (authed) {
+      updateSettings.mutate({ locale: next });
+    }
     await changeLocale(next);
   };
 
@@ -102,6 +108,7 @@ export default function SettingsScreen() {
             title={t(LOCALE_LABEL_KEY[code])}
             leadingIcon="globe"
             onPress={() => selectLocale(code)}
+            testID={`settings-locale-${code}`}
             trailing={
               locale === code ? <Icon name="check" size={22} color="primary" /> : undefined
             }

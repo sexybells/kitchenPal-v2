@@ -96,6 +96,28 @@ describe("Settings notifications", () => {
       }),
     );
   });
+
+  it("switching language saves the locale to the server settings", async () => {
+    await renderWithProviders(<SettingsScreen />);
+    const vietnamese = await screen.findByTestId("settings-locale-vi");
+
+    await act(async () => {
+      fireEvent.press(vietnamese);
+    });
+
+    await waitFor(() => expect(mockedUpdate).toHaveBeenCalledWith({ locale: "vi" }));
+  });
+
+  it("switching language as a guest stays local", async () => {
+    useSessionStore.setState({ status: "guest" });
+    await renderWithProviders(<SettingsScreen />);
+
+    await act(async () => {
+      fireEvent.press(await screen.findByTestId("settings-locale-vi"));
+    });
+
+    expect(mockedUpdate).not.toHaveBeenCalled();
+  });
 });
 
 describe("useTimeZoneSync", () => {
