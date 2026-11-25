@@ -53,6 +53,7 @@ import {
   RecipePreferenceRepository,
   type RecipePreferenceEntity,
 } from "../repositories/recipe-preference.repository";
+import { DayContextService, toSelectionContext } from "./day-context.service";
 import { matchIngredients } from "./pantry-match";
 import { toPreferenceResponse } from "./preference-filter";
 import { isRecipeOwner, toRecipeResponse } from "./recipe-mapper";
@@ -83,6 +84,7 @@ export class RecipesService {
     private readonly preferences: RecipePreferenceRepository,
     private readonly pantry: PantryItemRepository,
     private readonly selection: RecipeSelectionService,
+    private readonly dayContext: DayContextService,
     private readonly importer: RecipeImportService,
     private readonly externalSearch: ExternalSearchService,
     private readonly users: UserRepository,
@@ -460,16 +462,18 @@ export class RecipesService {
     query: SuggestionQuery,
     options: { operation: string; goal: string },
   ): Promise<SuggestionsResponse> {
+    const now = new Date();
+    const day = await this.dayContext.forUser(scope.userId, now);
     const selection = await this.selection.select(scope, {
       mealType: query.mealType,
       operation: options.operation,
       goal: options.goal,
       userId: scope.userId,
-      context: { now: new Date(), vegetarianDay: false },
+      context: toSelectionContext(day, now),
     });
     const suggestions: RecipeSuggestion[] = selection.ranked
       .slice(0, query.limit)
-      .map(({ doc, match }) => ({
+      .map(({ doc, match, rescues, isVegetarian }) => ({
         recipeId: doc.id,
         name: doc.name,
         mealType: doc.mealType,
@@ -478,15 +482,22 @@ export class RecipesService {
         matchScore: Math.round(match.matchScore * 100) / 100,
         availableCount: match.available.length,
         neededCount: match.needed.length,
-        // TEMPORARY stubs until the use-it-up/vegetarian logic lands.
-        rescues: [],
-        isVegetarian: false,
+        rescues: rescues.map(({ name, expiryDate }) => ({
+          name,
+          expiryDate: expiryDate.toISOString(),
+        })),
+        isVegetarian,
       }));
     return {
       suggestions,
       provider: selection.provider,
       degraded: selection.degraded,
-      day: placeholderDay(),
+      day: {
+        date: day.date,
+        lunar: day.lunar,
+        vegetarianDay: day.vegetarianDay,
+        vegetarianPriority: day.vegetarianPriority,
+      },
     };
   }
 
@@ -582,17 +593,4 @@ function decodeCursor(cursor: string | undefined): number {
     10,
   );
   return Number.isFinite(decoded) && decoded >= 0 ? decoded : 0;
-}
-
-/**
- * TEMPORARY: a fixed day so the contract compiles. Replaced by the real
- * lunar-calendar day computation in the suggestions task; delete then.
- */
-function placeholderDay(): SuggestionsResponse["day"] {
-  return {
-    date: "1970-01-01",
-    lunar: { day: 1, month: 1, year: 1970, isLeapMonth: false },
-    vegetarianDay: false,
-    vegetarianPriority: false,
-  };
 }

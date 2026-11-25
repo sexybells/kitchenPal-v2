@@ -5,6 +5,7 @@ import { AuthModule } from "../auth/auth.module";
 import { LogsModule } from "../logs/logs.module";
 import { PantryModule } from "../pantry/pantry.module";
 import { UploadsModule } from "../uploads/uploads.module";
+import { UsersModule } from "../users/users.module";
 import { ExternalSearchService } from "./ai/external-search.service";
 import { GeminiRecipeProvider } from "./ai/gemini-recipe.provider";
 import { OpenAiRecipeProvider } from "./ai/openai-recipe.provider";
@@ -39,6 +40,7 @@ import {
   RecipePreference,
   RecipePreferenceSchema,
 } from "./schemas/recipe-preference.schema";
+import { DayContextService } from "./services/day-context.service";
 import { MealPlansService } from "./services/meal-plans.service";
 import { RecipeSelectionService } from "./services/recipe-selection.service";
 import { RecipesService } from "./services/recipes.service";
@@ -98,6 +100,8 @@ const httpClientProvider = {
     // Bundled dish photography goes through the same storage transport as every
     // upload, so the seeded recipes never serve images from the source tree.
     UploadsModule,
+    // Day context reads the user's time zone and vegetarian-day opt-in.
+    UsersModule,
     MongooseModule.forFeature([
       { name: Recipe.name, schema: RecipeSchema },
       { name: RecipePreference.name, schema: RecipePreferenceSchema },
@@ -111,6 +115,7 @@ const httpClientProvider = {
     RecipesService,
     MealPlansService,
     RecipeSelectionService,
+    DayContextService,
     SystemRecipeSeederService,
     SystemRecipeImageService,
     RecipeAiService,
@@ -128,6 +133,7 @@ const httpClientProvider = {
   // needs to resolve plans and read recipe ingredients within scope. The seeder
   // is exported for the admin dev tool and the standalone seed script.
   exports: [
+    DayContextService,
     MealPlanRepository,
     RecipeRepository,
     SystemRecipeSeederService,

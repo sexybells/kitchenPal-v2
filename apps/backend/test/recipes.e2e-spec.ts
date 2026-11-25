@@ -355,6 +355,33 @@ describe("Recipes & meal plans (e2e)", () => {
     expect(body.suggestions[0]?.name).toBe("Tomato Pasta");
   });
 
+  it("returns rescues and the day block", async () => {
+    const user = await registerUser();
+    await request(server)
+      .post("/pantry/items")
+      .set(auth(user))
+      .send({
+        name: "cà chua",
+        category: "Veg",
+        stockState: "plenty",
+        expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+    await createRecipe(user, {
+      name: "Canh cà chua",
+      mealType: "dinner",
+      ingredients: [{ name: "cà chua" }, { name: "trứng" }],
+    });
+
+    const res = await request(server)
+      .post("/recipes/ai-suggestions/pantry")
+      .set(auth(user))
+      .send({ mealType: "dinner", limit: 5 });
+    expect(res.status).toBe(200);
+    const body = suggestionsResponseSchema.parse(res.body.data);
+    expect(body.suggestions[0]?.rescues[0]?.name).toBe("cà chua");
+    expect(body.day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
   it("auto-fills only empty slots and respects a vegetarian diet", async () => {
     const user = await registerUser();
     await request(server)
