@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { MealType } from "@kitchenpal/api-contract";
 import type { HydratedDocument } from "mongoose";
 import {
   addDays,
@@ -132,7 +133,7 @@ export class ReminderTickService {
     }
 
     const day = await this.dayContext.forUser(userId, at);
-    const scope = await this.scopeFor(userId);
+    const scope = await this.scopeFor(userId, user.activeHouseholdId?.toString() ?? null);
     const tomorrowLunar = toLunarDate(addDays(day.solar, 1));
     const remindVegetarianDay =
       doc.observesVegetarianDays === true && isVegetarianLunarDay(tomorrowLunar);
@@ -153,11 +154,13 @@ export class ReminderTickService {
       const pick = ranked.find((entry) => entry.isVegetarian);
       input.vegetarianPick = pick ? { name: pick.doc.name } : null;
     } else {
-      const ranked = await this.rank(scope, userId, toSelectionContext(day, at));
-      const pick = ranked.find(
-        (entry) =>
-          entry.rescues.length >= 1 && (!day.vegetarianPriority || entry.isVegetarian),
-      );
+      // The push asks about tonight, so a dinner dish first; any meal type after.
+      const context = toSelectionContext(day, at);
+      const isRescue = (entry: { rescues: unknown[]; isVegetarian: boolean }) =>
+        entry.rescues.length >= 1 && (!day.vegetarianPriority || entry.isVegetarian);
+      const pick =
+        (await this.rank(scope, userId, context, "dinner")).find(isRescue) ??
+        (await this.rank(scope, userId, context)).find(isRescue);
       input.rescuePick = pick
         ? {
             recipeId: pick.doc.id,
@@ -188,20 +191,32 @@ export class ReminderTickService {
     return "sent";
   }
 
-  /** Same scope as the home screen: the user's household when active, else personal. */
-  private async scopeFor(userId: string): Promise<ScopeContext> {
-    const membership = await this.members.latestActiveForUser(userId);
-    return membership
-      ? { scope: "household", userId, householdId: membership.householdId.toString() }
-      : toPersonalScope(userId);
+  /**
+   * Same resolution as the app's household-preferred ScopeGuard: the household
+   * stored as active on the user when they are still an active member of it,
+   * else personal.
+   */
+  private async scopeFor(
+    userId: string,
+    activeHouseholdId: string | null,
+  ): Promise<ScopeContext> {
+    if (
+      activeHouseholdId &&
+      (await this.members.isActiveMember(activeHouseholdId, userId))
+    ) {
+      return { scope: "household", userId, householdId: activeHouseholdId };
+    }
+    return toPersonalScope(userId);
   }
 
   private async rank(
     scope: ScopeContext,
     userId: string,
     context: { now: Date; vegetarianDay: boolean },
+    mealType?: MealType,
   ) {
     const { ranked } = await this.selection.select(scope, {
+      ...(mealType ? { mealType } : {}),
       operation: "reminder.daily",
       goal: "A dish for the daily meal reminder",
       userId,

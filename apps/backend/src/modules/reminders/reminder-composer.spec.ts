@@ -19,6 +19,7 @@ describe("composeReminder", () => {
         lunarMonth: 1,
         isLeapMonth: false,
         recipeName: "Đậu sốt cà",
+        preview: "Gợi ý: Đậu sốt cà. Đi chợ chiều nay nhé.",
       },
       push: {
         title: "Mai là rằm tháng Giêng",
@@ -37,6 +38,7 @@ describe("composeReminder", () => {
     expect(result?.type).toBe("vegetarian_day");
     expect(result?.payload).not.toHaveProperty("recipeName");
     expect(result?.push.body).toBe("Nhớ chuẩn bị đồ chay, đi chợ chiều nay nhé.");
+    expect(result?.payload.preview).toBe(result?.push.body);
   });
 
   it("sends an expiry alert when only a rescue exists", () => {
@@ -48,7 +50,12 @@ describe("composeReminder", () => {
     });
     expect(result).toEqual({
       type: "expiry_alert",
-      payload: { recipeId: "r1", recipeName: "Canh chua", items: ["cà chua", "đậu hũ"] },
+      payload: {
+        recipeId: "r1",
+        recipeName: "Canh chua",
+        items: ["cà chua", "đậu hũ"],
+        preview: "Use up cà chua, đậu hũ before they spoil.",
+      },
       push: {
         title: "Cook Canh chua tonight?",
         body: "Use up cà chua, đậu hũ before they spoil.",

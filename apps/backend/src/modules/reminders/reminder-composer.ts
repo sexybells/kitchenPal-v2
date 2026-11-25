@@ -26,7 +26,9 @@ export interface ComposedReminder {
  */
 export function composeReminder(input: ReminderInput): ComposedReminder | null {
   const { locale, tomorrowLunar, vegetarianPick, rescuePick } = input;
+  // `preview` is the line the in-app notification list shows under the badge.
   if (tomorrowLunar) {
+    const push = vegetarianDayCopy(locale, tomorrowLunar, vegetarianPick?.name ?? null);
     return {
       type: "vegetarian_day",
       payload: {
@@ -34,19 +36,22 @@ export function composeReminder(input: ReminderInput): ComposedReminder | null {
         lunarMonth: tomorrowLunar.month,
         isLeapMonth: tomorrowLunar.isLeapMonth,
         ...(vegetarianPick ? { recipeName: vegetarianPick.name } : {}),
+        preview: push.body,
       },
-      push: vegetarianDayCopy(locale, tomorrowLunar, vegetarianPick?.name ?? null),
+      push,
     };
   }
   if (rescuePick) {
+    const push = expiryAlertCopy(locale, rescuePick.name, rescuePick.items);
     return {
       type: "expiry_alert",
       payload: {
         recipeId: rescuePick.recipeId,
         recipeName: rescuePick.name,
         items: rescuePick.items,
+        preview: push.body,
       },
-      push: expiryAlertCopy(locale, rescuePick.name, rescuePick.items),
+      push,
     };
   }
   return null;

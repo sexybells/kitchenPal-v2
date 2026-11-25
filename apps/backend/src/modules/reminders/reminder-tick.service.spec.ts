@@ -63,8 +63,13 @@ function build(
   store: SettingsFixture[],
   options: {
     ranked?: Ranked[];
+    /** Ranking returned when `select` is asked for one meal type. */
+    rankedByMealType?: Record<string, Ranked[]>;
     suspended?: string[];
-    households?: Record<string, string>;
+    /** userId → the activeHouseholdId stored on the user. */
+    activeHousehold?: Record<string, string>;
+    /** Active memberships as `householdId|userId` pairs. */
+    memberships?: string[];
   } = {},
 ) {
   const settings = {
@@ -79,15 +84,26 @@ function build(
     findById: jest.fn(async (id: string) => ({
       id,
       suspendedAt: options.suspended?.includes(id) ? new Date() : null,
+      activeHouseholdId: options.activeHousehold?.[id]
+        ? { toString: () => options.activeHousehold![id] }
+        : null,
     })),
   };
   const members = {
-    latestActiveForUser: jest.fn(async (userId: string) => {
-      const householdId = options.households?.[userId];
-      return householdId ? { householdId: { toString: () => householdId } } : null;
-    }),
+    isActiveMember: jest.fn(async (householdId: string, userId: string) =>
+      (options.memberships ?? []).includes(`${householdId}|${userId}`),
+    ),
   };
-  const select = jest.fn(async () => ({ ranked: options.ranked ?? [meatRescue] }));
+  const select = jest.fn(
+    async (_scope: unknown, selectOptions: { mealType?: string }) => ({
+      ranked:
+        (selectOptions.mealType
+          ? options.rankedByMealType?.[selectOptions.mealType]
+          : undefined) ??
+        options.ranked ??
+        [meatRescue],
+    }),
+  );
   const notify = jest.fn(async () => undefined);
   const claimed = new Set<string>();
   const deliveries = {
@@ -168,12 +184,40 @@ describe("ReminderTickService.run", () => {
   it("sends to each opted-in member of the same household", async () => {
     const { service, notify, select } = build(
       [settingsFor("u1"), settingsFor("u2")],
-      { households: { u1: "h1", u2: "h1" } },
+      {
+        activeHousehold: { u1: "h1", u2: "h1" },
+        memberships: ["h1|u1", "h1|u2"],
+      },
     );
     await expect(service.run(AT)).resolves.toEqual({ considered: 2, sent: 2 });
     expect(notifiedUsers(notify)).toEqual(["u1", "u2"]);
     expect(select).toHaveBeenCalledWith(
       { scope: "household", userId: "u1", householdId: "h1" },
+      expect.anything(),
+    );
+  });
+
+  it("uses the stored active household, not the latest joined one", async () => {
+    // u1 joined hA first (kept as active) and hB later.
+    const { service, select } = build([settingsFor("u1")], {
+      activeHousehold: { u1: "hA" },
+      memberships: ["hA|u1", "hB|u1"],
+    });
+    await service.run(AT);
+    expect(select).toHaveBeenCalledWith(
+      { scope: "household", userId: "u1", householdId: "hA" },
+      expect.anything(),
+    );
+  });
+
+  it("falls back to personal when the stored household membership is inactive", async () => {
+    const { service, select } = build([settingsFor("u1")], {
+      activeHousehold: { u1: "hA" },
+      memberships: ["hB|u1"],
+    });
+    await service.run(AT);
+    expect(select).toHaveBeenCalledWith(
+      { scope: "personal", userId: "u1", householdId: null },
       expect.anything(),
     );
   });
@@ -210,6 +254,7 @@ describe("ReminderTickService.run", () => {
         recipeId: "r-meat",
         recipeName: "Thịt kho",
         items: ["thịt ba chỉ", "trứng"],
+        preview: "Dùng hết thịt ba chỉ, trứng trước khi hỏng.",
       },
       delivery: {
         push: {
@@ -232,6 +277,49 @@ describe("ReminderTickService.run", () => {
     const [notifiedAt] = notify.mock.invocationCallOrder;
     expect(claimedAt).toBeDefined();
     expect(claimedAt!).toBeLessThan(notifiedAt!);
+  });
+
+  it("prefers a dinner rescue for the use-it-up push", async () => {
+    const dinnerRescue: Ranked = {
+      doc: { id: "r-dinner", name: "Canh chua" },
+      rescues: [{ name: "cà chua" }],
+      isVegetarian: true,
+    };
+    const { service, notify, select } = build([settingsFor("u1")], {
+      ranked: [meatRescue],
+      rankedByMealType: { dinner: [dinnerRescue] },
+    });
+    await service.run(AT);
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(select).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ mealType: "dinner" }),
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        payload: expect.objectContaining({ recipeId: "r-dinner" }),
+      }),
+    );
+  });
+
+  it("falls back to any meal type when no dinner rescues anything", async () => {
+    const { service, notify, select } = build([settingsFor("u1")], {
+      ranked: [meatRescue],
+      rankedByMealType: { dinner: [vegNoRescue] },
+    });
+    await service.run(AT);
+    expect(select).toHaveBeenCalledTimes(2);
+    expect(select).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.not.objectContaining({ mealType: expect.anything() }),
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        payload: expect.objectContaining({ recipeId: "r-meat" }),
+      }),
+    );
   });
 
   it("sends nothing when no recipe rescues anything", async () => {
@@ -275,7 +363,13 @@ describe("ReminderTickService.run", () => {
     );
     expect(notify).toHaveBeenCalledWith("u1", {
       type: "vegetarian_day",
-      payload: { lunarDay: 1, lunarMonth: 11, isLeapMonth: false, recipeName: "Đậu sốt cà" },
+      payload: {
+        lunarDay: 1,
+        lunarMonth: 11,
+        isLeapMonth: false,
+        recipeName: "Đậu sốt cà",
+        preview: "Gợi ý: Đậu sốt cà. Đi chợ chiều nay nhé.",
+      },
       delivery: {
         push: {
           title: "Mai là mùng 1 tháng 11",

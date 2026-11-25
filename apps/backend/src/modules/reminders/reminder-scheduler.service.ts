@@ -38,7 +38,8 @@ export class ReminderSchedulerService implements OnApplicationBootstrap {
       .upsertJobScheduler(
         MEAL_REMINDERS_SCHEDULER_ID,
         { pattern: MEAL_REMINDERS_PATTERN },
-        { name: "tick" },
+        // Keep Redis from accumulating one finished job per hour forever.
+        { name: "tick", opts: { removeOnComplete: 100, removeOnFail: 500 } },
       )
       .then(
         () =>

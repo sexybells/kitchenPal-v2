@@ -212,9 +212,9 @@ trực tiếp để test.
 1. Lấy người dùng đủ điều kiện: `notifications.push && notifications.mealReminders`,
    có ≥1 `pushTokens`, không bị suspend, và **giờ địa phương hiện tại = 16**
    (`REMINDER_HOUR = 16`, tính từ `timeZone`).
-2. Với mỗi người, xác định scope như trang chủ: household nếu có membership active
-   đã xác minh, ngược lại personal. (Người thuộc nhiều household: dùng membership
-   active gần nhất — xem Câu hỏi mở.)
+2. Với mỗi người, xác định scope như trang chủ (giống ScopeGuard household-preferred):
+   household = `user.activeHouseholdId` lưu trên User nếu người đó vẫn là member
+   active của household ấy (đã xác minh qua membership), ngược lại personal.
 3. Chọn **tối đa một** push theo thứ tự ưu tiên:
    - **Mai là ngày chay** (người dùng opt-in, ngày âm của *ngày mai* là 1/15) →
      type mới `vegetarian_day`. Nội dung kèm 1 món chay top theo `select()` với
@@ -285,7 +285,8 @@ email: false }` vào `CHANNELS`, enum contract, schema, và label + route mobile
 
 ## Câu hỏi mở
 
-- Người thuộc nhiều household: tác vụ nền không có token nên không biết household
-  "đang chọn". **Tạm dùng membership active gần nhất** *(quyết định của người viết)*.
-  Vấn đề gốc đã treo từ trước ("multi-household active-switch endpoint"); khi nó được
-  giải, tác vụ nền đổi theo.
+- Người thuộc nhiều household: tác vụ nền không có token, nên dùng
+  `activeHouseholdId` lưu trên User (đã xác minh membership active) — đúng household
+  mà app đang hiển thị, không phải membership tham gia gần nhất. Vấn đề gốc vẫn treo
+  từ trước ("multi-household active-switch endpoint"); khi nó được giải và
+  `activeHouseholdId` đổi theo lựa chọn của người dùng, tác vụ nền tự đổi theo.
